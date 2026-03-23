@@ -1,0 +1,56 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: tv-recruitment
+  profiles:
+    active: dev
+
+  servlet:
+    multipart:
+      max-file-size: 200MB
+      max-request-size: 200MB
+
+# MyBatis-Plus配置
+mybatis-plus:
+  mapper-locations: classpath:mapper/*.xml
+  type-aliases-package: com.tv.recruitment.entity
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+
+# JWT配置
+jwt:
+  secret: TvRecruitmentSecretKey2024VeryLongSecretKeyForJwtToken
+  expiration: 86400000
+  header: Authorization
+  prefix: "Bearer "
+
+# 文件存储配置
+file:
+  storage:
+    base-path: D:/tv-files
+    image-path: /images
+    video-path: /videos
+    poster-path: /posters
+    template-path: /templates
+    max-size: 209715200
+
+# Knife4j配置
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+  api-docs:
+    path: /v3/api-docs
+
+knife4j:
+  enable: true
+  setting:
+    language: zh_cn

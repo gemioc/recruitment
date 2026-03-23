@@ -1,0 +1,77 @@
+package com.tv.recruitment.controller;
+
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tv.recruitment.common.result.Result;
+import com.tv.recruitment.entity.Job;
+import com.tv.recruitment.service.JobService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * 职位控制器
+ */
+@Tag(name = "职位管理")
+@RestController
+@RequestMapping("/api/jobs")
+@RequiredArgsConstructor
+public class JobController {
+
+    private final JobService jobService;
+
+    @Operation(summary = "分页查询职位")
+    @GetMapping
+    public Result<Page<Job>> page(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize,
+            @RequestParam(required = false) String jobName,
+            @RequestParam(required = false) String workAddress,
+            @RequestParam(required = false) Integer status) {
+        return Result.success(jobService.page(pageNum, pageSize, jobName, workAddress, status));
+    }
+
+    @Operation(summary = "获取职位详情")
+    @GetMapping("/{id}")
+    public Result<Job> getById(@PathVariable Long id) {
+        return Result.success(jobService.getById(id));
+    }
+
+    @Operation(summary = "新增职位")
+    @PostMapping
+    public Result<Void> save(@RequestBody Job job) {
+        jobService.save(job);
+        return Result.success();
+    }
+
+    @Operation(summary = "编辑职位")
+    @PutMapping("/{id}")
+    public Result<Void> update(@PathVariable Long id, @RequestBody Job job) {
+        job.setId(id);
+        jobService.updateById(job);
+        return Result.success();
+    }
+
+    @Operation(summary = "删除职位")
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        jobService.removeById(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "更改状态")
+    @PutMapping("/{id}/status")
+    public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
+        jobService.updateStatus(id, status);
+        return Result.success();
+    }
+
+    @Operation(summary = "批量更改状态")
+    @PutMapping("/batch/status")
+    public Result<Void> batchUpdateStatus(@RequestBody List<Long> ids, @RequestParam Integer status) {
+        jobService.batchUpdateStatus(ids, status);
+        return Result.success();
+    }
+}
