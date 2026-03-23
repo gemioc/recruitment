@@ -1,18 +1,27 @@
 package com.tv.recruitment.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
+import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
  * 推送记录实体
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @TableName("t_push_record")
-public class PushRecord extends BaseEntity {
+public class PushRecord implements Serializable {
+
+    private static final long serialVersionUID = 1L;
+
+    /**
+     * 主键ID
+     */
+    @TableId(type = IdType.AUTO)
+    private Long id;
 
     /**
      * 内容类型: 1-海报 2-视频
@@ -38,6 +47,21 @@ public class PushRecord extends BaseEntity {
      * 推送目标ID列表（JSON数组）
      */
     private String targetIds;
+
+    /**
+     * 设备数量
+     */
+    private Integer deviceCount;
+
+    /**
+     * 成功数量
+     */
+    private Integer successCount;
+
+    /**
+     * 失败数量
+     */
+    private Integer failCount;
 
     /**
      * 分组ID

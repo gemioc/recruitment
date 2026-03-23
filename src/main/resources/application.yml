@@ -7,6 +7,10 @@ spring:
   profiles:
     active: dev
 
+  web:
+    resources:
+      static-locations: classpath:/static/
+
   servlet:
     multipart:
       max-file-size: 200MB
@@ -36,7 +40,7 @@ jwt:
 # 文件存储配置
 file:
   storage:
-    base-path: D:/tv-files
+    base-path: D:/B-code_space/tv-files
     image-path: /images
     video-path: /videos
     poster-path: /posters

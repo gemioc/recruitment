@@ -20,7 +20,7 @@ import java.util.Map;
  */
 @Tag(name = "系统配置")
 @RestController
-@RequestMapping("/api/config")
+@RequestMapping("/config")
 @RequiredArgsConstructor
 public class ConfigController {
 

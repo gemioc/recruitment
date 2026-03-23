@@ -19,7 +19,7 @@ import java.util.List;
  */
 @Tag(name = "推送管理")
 @RestController
-@RequestMapping("/api/push")
+@RequestMapping("/push")
 @RequiredArgsConstructor
 public class PushController {
 
@@ -88,6 +88,30 @@ public class PushController {
         return Result.success(result);
     }
 
+    @Operation(summary = "获取推送记录详情")
+    @GetMapping("/records/{id}")
+    public Result<PushRecord> getRecordDetail(@PathVariable Long id) {
+        return Result.success(pushRecordMapper.selectById(id));
+    }
+
+    @Operation(summary = "批量推送")
+    @PostMapping("/multiple")
+    public Result<Long> pushMultiple(@RequestBody PushRequest request) {
+        PushRecord record = new PushRecord();
+        record.setContentType(request.getContentType());
+        record.setContentId(request.getContentId());
+        record.setPushType(request.getPushType());
+        record.setTargetIds(JSONUtil.toJsonStr(request.getTargetIds()));
+        record.setPlayRule(JSONUtil.toJsonStr(request.getPlayRule()));
+        record.setDeviceCount(request.getTargetIds().size());
+        record.setPushStatus(0);
+        pushRecordMapper.insert(record);
+
+        executePush(record, request);
+
+        return Result.success(record.getId());
+    }
+
     private void executePush(PushRecord record, PushRequest request) {
         List<Long> targetIds = request.getTargetIds();
         for (Long deviceId : targetIds) {
@@ -102,6 +126,8 @@ public class PushController {
     public static class PushRequest {
         private Long posterId;
         private Long videoId;
+        private Integer contentType;
+        private Long contentId;
         private Integer pushType;
         private List<Long> targetIds;
         private Long groupId;

@@ -1,7 +1,6 @@
 package com.tv.recruitment.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.entity.User;
 import com.tv.recruitment.mapper.UserMapper;
@@ -18,7 +17,7 @@ import java.util.List;
  */
 @Tag(name = "用户管理")
 @RestController
-@RequestMapping("/api/users")
+@RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
@@ -76,12 +75,12 @@ public class UserController {
 
     @Operation(summary = "重置密码")
     @PutMapping("/{id}/resetPassword")
-    public Result<Void> resetPassword(@PathVariable Long id) {
+    public Result<Void> resetPassword(@PathVariable Long id, @RequestBody String newPassword) {
         User user = new User();
         user.setId(id);
-        user.setPassword(passwordEncoder.encode("123456"));
+        user.setPassword(passwordEncoder.encode(newPassword));
         userMapper.updateById(user);
-        return Result.success("密码已重置为：123456");
+        return Result.success();
     }
 
     @Operation(summary = "批量启用/禁用")

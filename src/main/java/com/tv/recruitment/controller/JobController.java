@@ -16,7 +16,7 @@ import java.util.List;
  */
 @Tag(name = "职位管理")
 @RestController
-@RequestMapping("/api/jobs")
+@RequestMapping("/jobs")
 @RequiredArgsConstructor
 public class JobController {
 

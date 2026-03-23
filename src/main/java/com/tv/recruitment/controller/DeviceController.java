@@ -16,7 +16,7 @@ import java.util.Map;
  */
 @Tag(name = "设备管理")
 @RestController
-@RequestMapping("/api/devices")
+@RequestMapping("/devices")
 @RequiredArgsConstructor
 public class DeviceController {
 
@@ -54,6 +54,20 @@ public class DeviceController {
     public Result<Void> update(@PathVariable Long id, @RequestBody Device device) {
         device.setId(id);
         deviceService.updateById(device);
+        return Result.success();
+    }
+
+    @Operation(summary = "删除设备")
+    @DeleteMapping("/{id}")
+    public Result<Void> delete(@PathVariable Long id) {
+        deviceService.removeById(id);
+        return Result.success();
+    }
+
+    @Operation(summary = "重启设备")
+    @PostMapping("/{id}/restart")
+    public Result<Void> restart(@PathVariable Long id) {
+        deviceService.restartDevice(id);
         return Result.success();
     }
 

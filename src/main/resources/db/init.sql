@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS `t_user` (
   `phone` VARCHAR(20) DEFAULT NULL COMMENT '手机号',
   `email` VARCHAR(100) DEFAULT NULL COMMENT '邮箱',
   `role` TINYINT NOT NULL DEFAULT 2 COMMENT '角色:1-管理员 2-运营人员',
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1-启用 2-禁用',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1-启用 0-禁用',
   `last_login_time` DATETIME DEFAULT NULL COMMENT '最后登录时间',
   `create_by` BIGINT DEFAULT NULL COMMENT '创建人ID',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -31,17 +31,22 @@ CREATE TABLE IF NOT EXISTS `t_user` (
 CREATE TABLE IF NOT EXISTS `t_job` (
   `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `job_name` VARCHAR(100) NOT NULL COMMENT '职位名称',
+  `company` VARCHAR(100) DEFAULT NULL COMMENT '公司名称',
   `salary_min` DECIMAL(10,2) DEFAULT NULL COMMENT '薪资下限(元/月)',
   `salary_max` DECIMAL(10,2) DEFAULT NULL COMMENT '薪资上限(元/月)',
   `work_address` VARCHAR(200) NOT NULL COMMENT '工作地址',
+  `education` VARCHAR(20) DEFAULT '不限' COMMENT '学历要求',
+  `experience` VARCHAR(20) DEFAULT '不限' COMMENT '经验要求',
   `requirements` TEXT NOT NULL COMMENT '任职要求',
   `recruit_count` INT DEFAULT 1 COMMENT '招聘人数',
   `responsibilities` TEXT DEFAULT NULL COMMENT '岗位职责',
   `welfare` VARCHAR(500) DEFAULT NULL COMMENT '公司福利',
+  `contact_name` VARCHAR(50) DEFAULT NULL COMMENT '联系人',
   `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
+  `contact_email` VARCHAR(100) DEFAULT NULL COMMENT '联系邮箱',
   `contact_wechat` VARCHAR(50) DEFAULT NULL COMMENT '联系微信',
   `deadline` DATE DEFAULT NULL COMMENT '截止招聘日期',
-  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1-正在招聘 2-已截止',
+  `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态:1-招聘中 0-已暂停',
   `create_by` BIGINT DEFAULT NULL COMMENT '创建人ID',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` BIGINT DEFAULT NULL COMMENT '更新人ID',
@@ -74,6 +79,8 @@ CREATE TABLE IF NOT EXISTS `t_device` (
   `device_name` VARCHAR(100) DEFAULT NULL COMMENT '设备名称',
   `location` VARCHAR(200) NOT NULL COMMENT '设备位置',
   `group_id` BIGINT DEFAULT NULL COMMENT '分组ID',
+  `resolution` VARCHAR(20) DEFAULT '1920x1080' COMMENT '分辨率',
+  `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '使用状态:1-在用 2-闲置',
   `online_status` TINYINT NOT NULL DEFAULT 0 COMMENT '在线状态:0-离线 1-在线',
   `last_heartbeat` DATETIME DEFAULT NULL COMMENT '最后心跳时间',
@@ -148,6 +155,9 @@ CREATE TABLE IF NOT EXISTS `t_push_record` (
   `content_name` VARCHAR(100) DEFAULT NULL COMMENT '内容名称',
   `push_type` TINYINT NOT NULL COMMENT '推送类型:1-单台 2-多台 3-分组',
   `target_ids` TEXT NOT NULL COMMENT '推送目标ID列表(JSON数组)',
+  `device_count` INT DEFAULT 0 COMMENT '设备数量',
+  `success_count` INT DEFAULT 0 COMMENT '成功数量',
+  `fail_count` INT DEFAULT 0 COMMENT '失败数量',
   `group_id` BIGINT DEFAULT NULL COMMENT '分组ID',
   `push_status` TINYINT NOT NULL DEFAULT 0 COMMENT '推送状态:0-推送中 1-成功 2-失败',
   `fail_reason` VARCHAR(500) DEFAULT NULL COMMENT '失败原因',
@@ -197,7 +207,7 @@ CREATE TABLE IF NOT EXISTS `t_system_config` (
 
 -- 默认管理员账号 (密码: admin123)
 INSERT INTO `t_user` (`username`, `password`, `real_name`, `role`, `status`) VALUES
-('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iAt9K6Ua', '系统管理员', 1, 1);
+('admin', '$2a$10$EqKcp1WFKVQISheBxmXNGexPR.i7QYXOJC.OFfQDT8iSaHuuPdlrW', '系统管理员', 1, 1);
 
 -- 海报模板
 INSERT INTO `t_poster_template` (`template_name`, `template_path`, `color_scheme`, `preview_path`, `is_default`, `status`) VALUES

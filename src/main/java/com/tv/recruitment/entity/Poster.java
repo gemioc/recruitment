@@ -1,9 +1,12 @@
 package com.tv.recruitment.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+
+import java.time.LocalDateTime;
 
 /**
  * 海报实体
@@ -43,4 +46,10 @@ public class Poster extends BaseEntity {
      */
     @TableField(fill = FieldFill.INSERT)
     private Long createBy;
+
+    /**
+     * 更新时间（表中不存在此字段）
+     */
+    @TableField(exist = false)
+    private LocalDateTime updateTime;
 }

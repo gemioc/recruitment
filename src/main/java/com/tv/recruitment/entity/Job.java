@@ -1,5 +1,6 @@
 package com.tv.recruitment.entity;
 
+import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
@@ -22,6 +23,11 @@ public class Job extends BaseEntity {
     private String jobName;
 
     /**
+     * 公司名称
+     */
+    private String company;
+
+    /**
      * 薪资下限
      */
     private BigDecimal salaryMin;
@@ -35,6 +41,16 @@ public class Job extends BaseEntity {
      * 工作地址
      */
     private String workAddress;
+
+    /**
+     * 学历要求
+     */
+    private String education;
+
+    /**
+     * 经验要求
+     */
+    private String experience;
 
     /**
      * 任职要求
@@ -57,9 +73,19 @@ public class Job extends BaseEntity {
     private String welfare;
 
     /**
+     * 联系人
+     */
+    private String contactName;
+
+    /**
      * 联系电话
      */
     private String contactPhone;
+
+    /**
+     * 联系邮箱
+     */
+    private String contactEmail;
 
     /**
      * 联系微信

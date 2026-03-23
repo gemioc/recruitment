@@ -36,6 +36,16 @@ public class Device extends BaseEntity {
     private Long groupId;
 
     /**
+     * 分辨率
+     */
+    private String resolution;
+
+    /**
+     * 备注
+     */
+    private String remark;
+
+    /**
      * 使用状态: 1-在用 2-闲置
      */
     private Integer status;

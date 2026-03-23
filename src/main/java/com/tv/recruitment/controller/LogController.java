@@ -17,7 +17,7 @@ import java.util.List;
  */
 @Tag(name = "操作日志")
 @RestController
-@RequestMapping("/api/logs")
+@RequestMapping("/logs")
 @RequiredArgsConstructor
 public class LogController {
 
@@ -51,6 +51,13 @@ public class LogController {
                 new OperationType("CREATE_POSTER", "生成海报"),
                 new OperationType("PUSH_CONTENT", "推送内容")
         ));
+    }
+
+    @Operation(summary = "清空日志")
+    @DeleteMapping
+    public Result<Void> clear() {
+        operationLogMapper.delete(null);
+        return Result.success();
     }
 
     @lombok.Data

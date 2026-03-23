@@ -26,4 +26,9 @@ public interface DeviceService extends IService<Device> {
      * 更新在线状态
      */
     void updateOnlineStatus(String deviceCode, boolean online);
+
+    /**
+     * 重启设备
+     */
+    void restartDevice(Long id);
 }

@@ -17,7 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
  */
 @Tag(name = "视频管理")
 @RestController
-@RequestMapping("/api/videos")
+@RequestMapping("/videos")
 @RequiredArgsConstructor
 public class VideoController {
 
@@ -53,6 +53,13 @@ public class VideoController {
         // TODO: 解析视频时长和分辨率
         videoMapper.insert(video);
 
+        return Result.success(video);
+    }
+
+    @Operation(summary = "创建视频记录")
+    @PostMapping
+    public Result<Video> create(@RequestBody Video video) {
+        videoMapper.insert(video);
         return Result.success(video);
     }
 

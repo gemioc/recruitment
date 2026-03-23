@@ -82,4 +82,11 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
                 .set(Device::getLastHeartbeat, LocalDateTime.now());
         update(wrapper);
     }
+
+    @Override
+    public void restartDevice(Long id) {
+        // TODO: 通过WebSocket发送重启指令到电视终端
+        // Device device = getById(id);
+        // webSocketHandler.sendControl(device.getDeviceCode(), "restart");
+    }
 }
