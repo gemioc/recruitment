@@ -17,9 +17,7 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.math.BigInteger;
 import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -43,7 +41,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final UserMapper userMapper;
 
     @Override
-    @Cacheable(value = "statistics", key = "'push:' + #type + ':' + #startDate + ':' + #endDate")
+    @Cacheable(value = "statistics", key = "'push:' + #type")
     public Map<String, Object> getPushStatistics(String startDate, String endDate, String type) {
         Map<String, Object> result = new HashMap<>();
 
@@ -60,9 +58,14 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         // 使用聚合查询一次性获取所有统计数据
         Map<String, Object> summary = pushRecordMapper.selectPushSummary(start, end);
-        result.put("total", summary.get("total"));
-        result.put("success", summary.get("success"));
-        result.put("fail", summary.get("fail"));
+
+        // 处理可能为null的结果
+        Object totalObj = summary.get("total");
+        long total = totalObj != null ? ((Number) totalObj).longValue() : 0L;
+
+        result.put("total", total);
+        result.put("success", summary.get("success") != null ? ((Number) summary.get("success")).longValue() : 0L);
+        result.put("fail", summary.get("fail") != null ? ((Number) summary.get("fail")).longValue() : 0L);
 
         // 今日推送
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -77,6 +80,15 @@ public class StatisticsServiceImpl implements StatisticsService {
             return result;
         }
 
+        // 如果没有数据，直接返回空图表数据
+        if (total == 0) {
+            result.put("trend", new ArrayList<>());
+            result.put("typeDistribution", new ArrayList<>());
+            result.put("hourDistribution", new int[24]);
+            result.put("deviceRank", new ArrayList<>());
+            return result;
+        }
+
         // 趋势数据 - 使用聚合SQL
         List<Map<String, Object>> trend = generateTrendDataOptimized(start, end);
         result.put("trend", trend);
@@ -85,12 +97,12 @@ public class StatisticsServiceImpl implements StatisticsService {
         List<Map<String, Object>> typeDistribution = new ArrayList<>();
         Map<String, Object> posterMap = new HashMap<>();
         posterMap.put("type", "poster");
-        posterMap.put("count", summary.get("posterCount"));
+        posterMap.put("count", summary.get("posterCount") != null ? ((Number) summary.get("posterCount")).longValue() : 0L);
         typeDistribution.add(posterMap);
 
         Map<String, Object> videoMap = new HashMap<>();
         videoMap.put("type", "video");
-        videoMap.put("count", summary.get("videoCount"));
+        videoMap.put("count", summary.get("videoCount") != null ? ((Number) summary.get("videoCount")).longValue() : 0L);
         typeDistribution.add(videoMap);
 
         result.put("typeDistribution", typeDistribution);
@@ -230,20 +242,9 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
-    @Cacheable(value = "statistics", key = "'device:' + #deviceId + ':' + #startDate + ':' + #endDate")
+    @Cacheable(value = "statistics", key = "'device:' + #deviceId")
     public Map<String, Object> getDeviceStatusStatistics(Long deviceId, String startDate, String endDate) {
         Map<String, Object> result = new HashMap<>();
-
-        // 时间范围默认最近7天
-        LocalDateTime start = LocalDateTime.now().minusDays(7);
-        LocalDateTime end = LocalDateTime.now();
-
-        if (startDate != null && !startDate.isEmpty()) {
-            start = LocalDate.parse(startDate).atStartOfDay();
-        }
-        if (endDate != null && !endDate.isEmpty()) {
-            end = LocalDate.parse(endDate).atTime(23, 59, 59);
-        }
 
         // 设备列表
         List<Device> devices;
@@ -260,10 +261,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         result.put("offlineCount", devices.size() - onlineCount);
         result.put("totalDevices", devices.size());
 
-        // 批量查询所有设备的推送次数
-        Map<Long, Long> devicePushCountMap = batchCountDevicePushCount(
-                devices.stream().map(Device::getId).collect(Collectors.toList()), start, end);
-
         // 设备状态详情列表
         List<Map<String, Object>> deviceStatusList = new ArrayList<>();
         for (Device device : devices) {
@@ -279,7 +276,6 @@ public class StatisticsServiceImpl implements StatisticsService {
             // 在线时长（累计 + 当前在线时长）
             long totalOnlineDuration = device.getTotalOnlineDuration() != null ? device.getTotalOnlineDuration() : 0;
             if (device.getOnlineStatus() != null && device.getOnlineStatus() == 1 && device.getLastOnlineTime() != null) {
-                // 设备当前在线，加上当前在线时长
                 totalOnlineDuration += java.time.Duration.between(device.getLastOnlineTime(), LocalDateTime.now()).getSeconds();
             }
             deviceStatus.put("totalOnlineDuration", totalOnlineDuration);
@@ -288,8 +284,8 @@ public class StatisticsServiceImpl implements StatisticsService {
             // 离线次数
             deviceStatus.put("offlineCount", device.getOfflineCount() != null ? device.getOfflineCount() : 0);
 
-            // 从批量查询结果中获取推送次数
-            deviceStatus.put("pushCount", devicePushCountMap.getOrDefault(device.getId(), 0L));
+            // 推送次数暂时设为0，由前端单独请求或异步加载
+            deviceStatus.put("pushCount", 0);
 
             // 当前播放内容
             if (device.getCurrentContentType() != null) {
@@ -299,7 +295,6 @@ public class StatisticsServiceImpl implements StatisticsService {
                     deviceStatus.put("currentContentName", contentName);
                 }
                 deviceStatus.put("contentStartTime", device.getContentStartTime());
-                // 计算当前内容展示时长
                 if (device.getContentStartTime() != null) {
                     long displayDuration = java.time.Duration.between(device.getContentStartTime(), LocalDateTime.now()).getSeconds();
                     deviceStatus.put("contentDisplayDuration", displayDuration);
@@ -310,10 +305,6 @@ public class StatisticsServiceImpl implements StatisticsService {
             deviceStatusList.add(deviceStatus);
         }
         result.put("deviceStatusList", deviceStatusList);
-
-        // 按日期统计推送次数趋势
-        List<Map<String, Object>> dailyPushTrend = generateDailyPushTrend(start, end, deviceId);
-        result.put("dailyPushTrend", dailyPushTrend);
 
         return result;
     }
@@ -815,116 +806,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
 
         return result;
-    }
-
-    /**
-     * 批量统计所有设备的推送次数
-     */
-    private Map<Long, Long> batchCountDevicePushCount(List<Long> deviceIds, LocalDateTime start, LocalDateTime end) {
-        Map<Long, Long> result = new HashMap<>();
-        if (deviceIds == null || deviceIds.isEmpty()) {
-            return result;
-        }
-
-        // 获取所有推送记录
-        List<PushRecord> records = pushRecordMapper.selectList(
-                new LambdaQueryWrapper<PushRecord>()
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-                        .select(PushRecord::getTargetIds)
-        );
-
-        // 初始化所有设备计数为0
-        for (Long id : deviceIds) {
-            result.put(id, 0L);
-        }
-
-        // 统计每个设备的推送次数
-        for (PushRecord record : records) {
-            if (record.getTargetIds() != null && !record.getTargetIds().isEmpty()) {
-                try {
-                    List<Long> targetIds = JSONUtil.toList(record.getTargetIds(), Long.class);
-                    for (Long targetId : targetIds) {
-                        if (result.containsKey(targetId)) {
-                            result.merge(targetId, 1L, Long::sum);
-                        }
-                    }
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-        }
-
-        return result;
-    }
-
-    /**
-     * 生成按日期的推送趋势
-     */
-    private List<Map<String, Object>> generateDailyPushTrend(LocalDateTime start, LocalDateTime end, Long filterDeviceId) {
-        List<Map<String, Object>> trend = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
-
-        // 使用聚合查询获取趋势数据
-        List<Map<String, Object>> dbResults = pushRecordMapper.selectDailyTrend(start, end);
-        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
-        for (Map<String, Object> row : dbResults) {
-            Date sqlDate = (Date) row.get("date");
-            String dateStr = sqlDate.toLocalDate().format(formatter);
-            dataMap.put(dateStr, row);
-        }
-
-        LocalDate current = start.toLocalDate();
-        LocalDate endDate = end.toLocalDate();
-
-        while (!current.isAfter(endDate)) {
-            String dateStr = current.format(formatter);
-
-            Long dailyCount;
-            if (filterDeviceId != null) {
-                // 单独统计指定设备
-                dailyCount = countDevicePushCount(filterDeviceId, current.atStartOfDay(), current.atTime(23, 59, 59));
-            } else {
-                Map<String, Object> dbData = dataMap.get(dateStr);
-                dailyCount = dbData != null ? ((Number) dbData.get("total")).longValue() : 0L;
-            }
-
-            Map<String, Object> dayData = new HashMap<>();
-            dayData.put("date", dateStr);
-            dayData.put("count", dailyCount.intValue());
-            trend.add(dayData);
-
-            current = current.plusDays(1);
-        }
-
-        return trend;
-    }
-
-    /**
-     * 统计单个设备的推送次数
-     */
-    private Long countDevicePushCount(Long deviceId, LocalDateTime start, LocalDateTime end) {
-        List<PushRecord> records = pushRecordMapper.selectList(
-                new LambdaQueryWrapper<PushRecord>()
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-                        .select(PushRecord::getTargetIds)
-        );
-
-        long count = 0;
-        for (PushRecord record : records) {
-            if (record.getTargetIds() != null && !record.getTargetIds().isEmpty()) {
-                try {
-                    List<Long> deviceIds = JSONUtil.toList(record.getTargetIds(), Long.class);
-                    if (deviceIds.contains(deviceId)) {
-                        count++;
-                    }
-                } catch (Exception e) {
-                    // ignore
-                }
-            }
-        }
-        return count;
     }
 
     /**
