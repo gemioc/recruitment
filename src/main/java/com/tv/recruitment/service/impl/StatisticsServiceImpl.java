@@ -3,7 +3,6 @@ package com.tv.recruitment.service.impl;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
-import com.tv.recruitment.common.utils.CsvExportUtils;
 import com.tv.recruitment.entity.*;
 import com.tv.recruitment.mapper.*;
 import com.tv.recruitment.service.StatisticsService;
@@ -13,12 +12,15 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.ss.util.CellRangeAddress;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.OutputStream;
+import java.math.BigInteger;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -41,6 +43,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final UserMapper userMapper;
 
     @Override
+    @Cacheable(value = "statistics", key = "'push:' + #type + ':' + #startDate + ':' + #endDate")
     public Map<String, Object> getPushStatistics(String startDate, String endDate, String type) {
         Map<String, Object> result = new HashMap<>();
 
@@ -55,31 +58,11 @@ public class StatisticsServiceImpl implements StatisticsService {
             end = LocalDate.parse(endDate).atTime(23, 59, 59);
         }
 
-        // 总推送次数
-        Long total = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
-        result.put("total", total);
-
-        // 成功次数
-        Long success = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .eq(PushRecord::getPushStatus, 1)
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
-        result.put("success", success);
-
-        // 失败次数
-        Long fail = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .eq(PushRecord::getPushStatus, 2)
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
-        result.put("fail", fail);
+        // 使用聚合查询一次性获取所有统计数据
+        Map<String, Object> summary = pushRecordMapper.selectPushSummary(start, end);
+        result.put("total", summary.get("total"));
+        result.put("success", summary.get("success"));
+        result.put("fail", summary.get("fail"));
 
         // 今日推送
         LocalDateTime todayStart = LocalDate.now().atStartOfDay();
@@ -89,43 +72,35 @@ public class StatisticsServiceImpl implements StatisticsService {
         );
         result.put("today", today);
 
-        // 趋势数据
-        List<Map<String, Object>> trend = generateTrendData(start, end);
+        // type=all 时只返回基础统计，不生成图表数据
+        if ("all".equals(type)) {
+            return result;
+        }
+
+        // 趋势数据 - 使用聚合SQL
+        List<Map<String, Object>> trend = generateTrendDataOptimized(start, end);
         result.put("trend", trend);
 
-        // 内容类型分布
+        // 内容类型分布 - 使用聚合结果
         List<Map<String, Object>> typeDistribution = new ArrayList<>();
-
-        Long posterCount = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .eq(PushRecord::getContentType, 1)
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
         Map<String, Object> posterMap = new HashMap<>();
         posterMap.put("type", "poster");
-        posterMap.put("count", posterCount);
+        posterMap.put("count", summary.get("posterCount"));
         typeDistribution.add(posterMap);
 
-        Long videoCount = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .eq(PushRecord::getContentType, 2)
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
         Map<String, Object> videoMap = new HashMap<>();
         videoMap.put("type", "video");
-        videoMap.put("count", videoCount);
+        videoMap.put("count", summary.get("videoCount"));
         typeDistribution.add(videoMap);
 
         result.put("typeDistribution", typeDistribution);
 
-        // 时段分布：按小时统计推送次数
-        int[] hourDistribution = generateHourDistribution(start, end);
+        // 时段分布 - 使用聚合SQL
+        int[] hourDistribution = generateHourDistributionOptimized(start, end);
         result.put("hourDistribution", hourDistribution);
 
-        // 设备推送排行：统计每个设备被推送的次数
-        List<Map<String, Object>> deviceRank = generateDeviceRank(start, end, 10);
+        // 设备推送排行 - 使用聚合SQL
+        List<Map<String, Object>> deviceRank = generateDeviceRankOptimized(start, end, 10);
         result.put("deviceRank", deviceRank);
 
         return result;
@@ -255,6 +230,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     @Override
+    @Cacheable(value = "statistics", key = "'device:' + #deviceId + ':' + #startDate + ':' + #endDate")
     public Map<String, Object> getDeviceStatusStatistics(Long deviceId, String startDate, String endDate) {
         Map<String, Object> result = new HashMap<>();
 
@@ -284,6 +260,10 @@ public class StatisticsServiceImpl implements StatisticsService {
         result.put("offlineCount", devices.size() - onlineCount);
         result.put("totalDevices", devices.size());
 
+        // 批量查询所有设备的推送次数
+        Map<Long, Long> devicePushCountMap = batchCountDevicePushCount(
+                devices.stream().map(Device::getId).collect(Collectors.toList()), start, end);
+
         // 设备状态详情列表
         List<Map<String, Object>> deviceStatusList = new ArrayList<>();
         for (Device device : devices) {
@@ -308,9 +288,8 @@ public class StatisticsServiceImpl implements StatisticsService {
             // 离线次数
             deviceStatus.put("offlineCount", device.getOfflineCount() != null ? device.getOfflineCount() : 0);
 
-            // 统计该设备的推送次数
-            Long pushCount = countDevicePushCount(device.getId(), start, end);
-            deviceStatus.put("pushCount", pushCount);
+            // 从批量查询结果中获取推送次数
+            deviceStatus.put("pushCount", devicePushCountMap.getOrDefault(device.getId(), 0L));
 
             // 当前播放内容
             if (device.getCurrentContentType() != null) {
@@ -607,22 +586,14 @@ public class StatisticsServiceImpl implements StatisticsService {
 
         int rowNum = 3;
 
-        // 推送统计
+        // 推送统计 - 使用聚合查询
         Row pushHeaderRow = sheet.createRow(rowNum++);
         pushHeaderRow.createCell(0).setCellValue("推送统计");
         sheet.addMergedRegion(new CellRangeAddress(rowNum - 1, rowNum - 1, 0, 1));
 
-        Long totalPush = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
-        Long successPush = pushRecordMapper.selectCount(
-                new LambdaQueryWrapper<PushRecord>()
-                        .eq(PushRecord::getPushStatus, 1)
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-        );
+        Map<String, Object> summary = pushRecordMapper.selectPushSummary(start, end);
+        Long totalPush = ((Number) summary.get("total")).longValue();
+        Long successPush = ((Number) summary.get("success")).longValue();
 
         sheet.createRow(rowNum++).createCell(0).setCellValue("推送总次数：" + totalPush);
         sheet.createRow(rowNum++).createCell(0).setCellValue("推送成功：" + successPush);
@@ -662,7 +633,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             cell.setCellStyle(headerStyle);
         }
 
-        List<Map<String, Object>> trend = generateTrendData(start, end);
+        List<Map<String, Object>> trend = generateTrendDataOptimized(start, end);
         int rowNum = 1;
         for (Map<String, Object> day : trend) {
             Row row = sheet.createRow(rowNum++);
@@ -687,7 +658,7 @@ public class StatisticsServiceImpl implements StatisticsService {
             cell.setCellStyle(headerStyle);
         }
 
-        List<Map<String, Object>> rank = generateDeviceRank(start, end, 20);
+        List<Map<String, Object>> rank = generateDeviceRankOptimized(start, end, 20);
         int rowNum = 1;
         for (Map<String, Object> device : rank) {
             Row row = sheet.createRow(rowNum);
@@ -724,48 +695,44 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     /**
-     * 生成趋势数据
+     * 生成趋势数据 - 优化版（单次SQL查询）
      */
-    private List<Map<String, Object>> generateTrendData(LocalDateTime start, LocalDateTime end) {
+    private List<Map<String, Object>> generateTrendDataOptimized(LocalDateTime start, LocalDateTime end) {
         List<Map<String, Object>> trend = new ArrayList<>();
         DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
 
+        // 使用聚合SQL查询
+        List<Map<String, Object>> dbResults = pushRecordMapper.selectDailyTrend(start, end);
+
+        // 转换为前端需要的格式，并填充缺失的日期
+        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : dbResults) {
+            Date sqlDate = (Date) row.get("date");
+            String dateStr = sqlDate.toLocalDate().format(formatter);
+            dataMap.put(dateStr, row);
+        }
+
+        // 遍历日期范围，填充数据
         LocalDate current = start.toLocalDate();
         LocalDate endDate = end.toLocalDate();
 
         while (!current.isAfter(endDate)) {
-            LocalDateTime dayStart = current.atStartOfDay();
-            LocalDateTime dayEnd = current.atTime(23, 59, 59);
-
-            Long posterPush = pushRecordMapper.selectCount(
-                    new LambdaQueryWrapper<PushRecord>()
-                            .eq(PushRecord::getContentType, 1)
-                            .ge(PushRecord::getPushTime, dayStart)
-                            .le(PushRecord::getPushTime, dayEnd)
-            );
-
-            Long videoPush = pushRecordMapper.selectCount(
-                    new LambdaQueryWrapper<PushRecord>()
-                            .eq(PushRecord::getContentType, 2)
-                            .ge(PushRecord::getPushTime, dayStart)
-                            .le(PushRecord::getPushTime, dayEnd)
-            );
-
-            Long successPush = pushRecordMapper.selectCount(
-                    new LambdaQueryWrapper<PushRecord>()
-                            .eq(PushRecord::getPushStatus, 1)
-                            .ge(PushRecord::getPushTime, dayStart)
-                            .le(PushRecord::getPushTime, dayEnd)
-            );
-
-            Long totalPush = posterPush + videoPush;
-
+            String dateStr = current.format(formatter);
             Map<String, Object> dayData = new HashMap<>();
-            dayData.put("date", current.format(formatter));
-            dayData.put("total", totalPush.intValue());
-            dayData.put("success", successPush.intValue());
-            dayData.put("posterCount", posterPush.intValue());
-            dayData.put("videoCount", videoPush.intValue());
+            dayData.put("date", dateStr);
+
+            Map<String, Object> dbData = dataMap.get(dateStr);
+            if (dbData != null) {
+                dayData.put("total", ((Number) dbData.get("total")).intValue());
+                dayData.put("success", ((Number) dbData.get("success")).intValue());
+                dayData.put("posterCount", ((Number) dbData.get("posterCount")).intValue());
+                dayData.put("videoCount", ((Number) dbData.get("videoCount")).intValue());
+            } else {
+                dayData.put("total", 0);
+                dayData.put("success", 0);
+                dayData.put("posterCount", 0);
+                dayData.put("videoCount", 0);
+            }
             trend.add(dayData);
 
             current = current.plusDays(1);
@@ -775,22 +742,17 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     /**
-     * 生成时段分布数据（按小时统计）
+     * 生成时段分布数据 - 优化版（单次SQL查询）
      */
-    private int[] generateHourDistribution(LocalDateTime start, LocalDateTime end) {
+    private int[] generateHourDistributionOptimized(LocalDateTime start, LocalDateTime end) {
         int[] hourDistribution = new int[24];
 
-        List<PushRecord> records = pushRecordMapper.selectList(
-                new LambdaQueryWrapper<PushRecord>()
-                        .ge(PushRecord::getPushTime, start)
-                        .le(PushRecord::getPushTime, end)
-                        .select(PushRecord::getPushTime)
-        );
-
-        for (PushRecord record : records) {
-            if (record.getPushTime() != null) {
-                int hour = record.getPushTime().getHour();
-                hourDistribution[hour]++;
+        List<Map<String, Object>> dbResults = pushRecordMapper.selectHourDistribution(start, end);
+        for (Map<String, Object> row : dbResults) {
+            int hour = ((Number) row.get("hour")).intValue();
+            int count = ((Number) row.get("count")).intValue();
+            if (hour >= 0 && hour < 24) {
+                hourDistribution[hour] = count;
             }
         }
 
@@ -798,9 +760,12 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     /**
-     * 生成设备推送排行
+     * 生成设备推送排行 - 优化版（使用SQL聚合）
      */
-    private List<Map<String, Object>> generateDeviceRank(LocalDateTime start, LocalDateTime end, int limit) {
+    private List<Map<String, Object>> generateDeviceRankOptimized(LocalDateTime start, LocalDateTime end, int limit) {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        // 获取所有推送记录的target_ids
         List<PushRecord> records = pushRecordMapper.selectList(
                 new LambdaQueryWrapper<PushRecord>()
                         .ge(PushRecord::getPushTime, start)
@@ -808,8 +773,8 @@ public class StatisticsServiceImpl implements StatisticsService {
                         .select(PushRecord::getTargetIds)
         );
 
+        // 内存中统计（对于50台设备来说数据量不大）
         Map<Long, Integer> devicePushCount = new HashMap<>();
-
         for (PushRecord record : records) {
             if (record.getTargetIds() != null && !record.getTargetIds().isEmpty()) {
                 try {
@@ -823,15 +788,17 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
         }
 
+        // 排序并取前N个
         List<Map.Entry<Long, Integer>> sortedList = devicePushCount.entrySet().stream()
                 .sorted(Map.Entry.<Long, Integer>comparingByValue().reversed())
                 .limit(limit)
                 .collect(Collectors.toList());
 
         if (sortedList.isEmpty()) {
-            return new ArrayList<>();
+            return result;
         }
 
+        // 批量获取设备名称
         List<Long> deviceIds = sortedList.stream()
                 .map(Map.Entry::getKey)
                 .collect(Collectors.toList());
@@ -839,7 +806,6 @@ public class StatisticsServiceImpl implements StatisticsService {
         Map<Long, String> deviceNameMap = devices.stream()
                 .collect(Collectors.toMap(Device::getId, Device::getDeviceName));
 
-        List<Map<String, Object>> result = new ArrayList<>();
         for (Map.Entry<Long, Integer> entry : sortedList) {
             Map<String, Object> item = new HashMap<>();
             item.put("id", entry.getKey());
@@ -852,7 +818,90 @@ public class StatisticsServiceImpl implements StatisticsService {
     }
 
     /**
-     * 统计设备的推送次数
+     * 批量统计所有设备的推送次数
+     */
+    private Map<Long, Long> batchCountDevicePushCount(List<Long> deviceIds, LocalDateTime start, LocalDateTime end) {
+        Map<Long, Long> result = new HashMap<>();
+        if (deviceIds == null || deviceIds.isEmpty()) {
+            return result;
+        }
+
+        // 获取所有推送记录
+        List<PushRecord> records = pushRecordMapper.selectList(
+                new LambdaQueryWrapper<PushRecord>()
+                        .ge(PushRecord::getPushTime, start)
+                        .le(PushRecord::getPushTime, end)
+                        .select(PushRecord::getTargetIds)
+        );
+
+        // 初始化所有设备计数为0
+        for (Long id : deviceIds) {
+            result.put(id, 0L);
+        }
+
+        // 统计每个设备的推送次数
+        for (PushRecord record : records) {
+            if (record.getTargetIds() != null && !record.getTargetIds().isEmpty()) {
+                try {
+                    List<Long> targetIds = JSONUtil.toList(record.getTargetIds(), Long.class);
+                    for (Long targetId : targetIds) {
+                        if (result.containsKey(targetId)) {
+                            result.merge(targetId, 1L, Long::sum);
+                        }
+                    }
+                } catch (Exception e) {
+                    // ignore
+                }
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * 生成按日期的推送趋势
+     */
+    private List<Map<String, Object>> generateDailyPushTrend(LocalDateTime start, LocalDateTime end, Long filterDeviceId) {
+        List<Map<String, Object>> trend = new ArrayList<>();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
+
+        // 使用聚合查询获取趋势数据
+        List<Map<String, Object>> dbResults = pushRecordMapper.selectDailyTrend(start, end);
+        Map<String, Map<String, Object>> dataMap = new LinkedHashMap<>();
+        for (Map<String, Object> row : dbResults) {
+            Date sqlDate = (Date) row.get("date");
+            String dateStr = sqlDate.toLocalDate().format(formatter);
+            dataMap.put(dateStr, row);
+        }
+
+        LocalDate current = start.toLocalDate();
+        LocalDate endDate = end.toLocalDate();
+
+        while (!current.isAfter(endDate)) {
+            String dateStr = current.format(formatter);
+
+            Long dailyCount;
+            if (filterDeviceId != null) {
+                // 单独统计指定设备
+                dailyCount = countDevicePushCount(filterDeviceId, current.atStartOfDay(), current.atTime(23, 59, 59));
+            } else {
+                Map<String, Object> dbData = dataMap.get(dateStr);
+                dailyCount = dbData != null ? ((Number) dbData.get("total")).longValue() : 0L;
+            }
+
+            Map<String, Object> dayData = new HashMap<>();
+            dayData.put("date", dateStr);
+            dayData.put("count", dailyCount.intValue());
+            trend.add(dayData);
+
+            current = current.plusDays(1);
+        }
+
+        return trend;
+    }
+
+    /**
+     * 统计单个设备的推送次数
      */
     private Long countDevicePushCount(Long deviceId, LocalDateTime start, LocalDateTime end) {
         List<PushRecord> records = pushRecordMapper.selectList(
@@ -876,42 +925,6 @@ public class StatisticsServiceImpl implements StatisticsService {
             }
         }
         return count;
-    }
-
-    /**
-     * 生成按日期的推送趋势
-     */
-    private List<Map<String, Object>> generateDailyPushTrend(LocalDateTime start, LocalDateTime end, Long filterDeviceId) {
-        List<Map<String, Object>> trend = new ArrayList<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("MM-dd");
-
-        LocalDate current = start.toLocalDate();
-        LocalDate endDate = end.toLocalDate();
-
-        while (!current.isAfter(endDate)) {
-            LocalDateTime dayStart = current.atStartOfDay();
-            LocalDateTime dayEnd = current.atTime(23, 59, 59);
-
-            Long dailyCount;
-            if (filterDeviceId != null) {
-                dailyCount = countDevicePushCount(filterDeviceId, dayStart, dayEnd);
-            } else {
-                dailyCount = pushRecordMapper.selectCount(
-                        new LambdaQueryWrapper<PushRecord>()
-                                .ge(PushRecord::getPushTime, dayStart)
-                                .le(PushRecord::getPushTime, dayEnd)
-                );
-            }
-
-            Map<String, Object> dayData = new HashMap<>();
-            dayData.put("date", current.format(formatter));
-            dayData.put("count", dailyCount.intValue());
-            trend.add(dayData);
-
-            current = current.plusDays(1);
-        }
-
-        return trend;
     }
 
     /**

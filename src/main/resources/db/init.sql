@@ -239,3 +239,10 @@ INSERT INTO `t_system_config` (`config_key`, `config_value`, `description`) VALU
 -- ALTER TABLE `t_device` ADD COLUMN `offline_count` INT DEFAULT 0 COMMENT '离线次数' AFTER `total_online_duration`;
 -- ALTER TABLE `t_device` ADD COLUMN `content_start_time` DATETIME DEFAULT NULL COMMENT '当前内容开始播放时间' AFTER `play_status`;
 -- ALTER TABLE `t_device` ADD INDEX `idx_last_online_time` (`last_online_time`);
+
+-- ============================================
+-- 性能优化索引（统计查询优化）
+-- ============================================
+
+-- 推送记录表复合索引（用于统计查询）
+ALTER TABLE `t_push_record` ADD INDEX `idx_push_time_status_type` (`push_time`, `push_status`, `content_type`);
