@@ -16,6 +16,16 @@ spring:
       connection-test-query: SELECT 1
       validation-timeout: 3000
 
+# 文件存储配置
+file:
+  storage:
+    base-path: /home/tv_recru/tv-files
+    image-path: /images
+    video-path: /videos
+    poster-path: /posters
+    template-path: /templates
+    max-size: 209715200
+
 logging:
   level:
     com.tv.recruitment: info

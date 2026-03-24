@@ -5,7 +5,7 @@ spring:
   application:
     name: tv-recruitment
   profiles:
-    active: dev
+    active: @profiles.active@
 
   web:
     resources:
@@ -36,16 +36,6 @@ jwt:
   expiration: 86400000
   header: Authorization
   prefix: "Bearer "
-
-# 文件存储配置
-file:
-  storage:
-    base-path: D:/B-code_space/tv-files
-    image-path: /images
-    video-path: /videos
-    poster-path: /posters
-    template-path: /templates
-    max-size: 209715200
 
 # Knife4j配置
 springdoc:

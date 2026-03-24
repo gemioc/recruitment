@@ -117,6 +117,28 @@
         </dependency>
     </dependencies>
 
+    <!-- 多环境配置：dev 开发 / prod 生产 -->
+    <profiles>
+        <!-- 本地开发环境 -->
+        <profile>
+            <id>dev</id>
+            <activation>
+                <activeByDefault>true</activeByDefault>
+            </activation>
+            <properties>
+                <profiles.active>dev</profiles.active>
+            </properties>
+        </profile>
+
+        <!-- 服务器生产环境 -->
+        <profile>
+            <id>prod</id>
+            <properties>
+                <profiles.active>prod</profiles.active>
+            </properties>
+        </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>
