@@ -56,6 +56,11 @@ public class Device extends BaseEntity {
     private Integer onlineStatus;
 
     /**
+     * 最后上线时间
+     */
+    private LocalDateTime lastOnlineTime;
+
+    /**
      * 最后心跳时间
      */
     private LocalDateTime lastHeartbeat;
@@ -74,6 +79,21 @@ public class Device extends BaseEntity {
      * 播放状态: 1-播放中 2-暂停
      */
     private Integer playStatus;
+
+    /**
+     * 当前内容开始播放时间
+     */
+    private LocalDateTime contentStartTime;
+
+    /**
+     * 累计在线时长(秒)
+     */
+    private Long totalOnlineDuration;
+
+    /**
+     * 离线次数
+     */
+    private Integer offlineCount;
 
     /**
      * 分组名称（非数据库字段）

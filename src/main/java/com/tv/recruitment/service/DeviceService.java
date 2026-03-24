@@ -28,6 +28,21 @@ public interface DeviceService extends IService<Device> {
     void updateOnlineStatus(String deviceCode, boolean online);
 
     /**
+     * 更新设备心跳
+     */
+    void updateHeartbeat(String deviceCode);
+
+    /**
+     * 更新设备当前播放内容
+     */
+    void updateCurrentContent(String deviceCode, Integer contentType, Long contentId);
+
+    /**
+     * 计算设备当前在线时长（秒）
+     */
+    Long calculateCurrentOnlineDuration(Long deviceId);
+
+    /**
      * 重启设备
      */
     void restartDevice(Long id);

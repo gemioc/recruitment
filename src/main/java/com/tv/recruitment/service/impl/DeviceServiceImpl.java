@@ -107,11 +107,106 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
 
     @Override
     public void updateOnlineStatus(String deviceCode, boolean online) {
+        Device device = getOne(new LambdaQueryWrapper<Device>().eq(Device::getDeviceCode, deviceCode));
+        if (device == null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
+        LambdaUpdateWrapper<Device> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Device::getDeviceCode, deviceCode);
+
+        if (online) {
+            // 设备上线
+            wrapper.set(Device::getOnlineStatus, 1)
+                    .set(Device::getLastHeartbeat, now)
+                    .set(Device::getLastOnlineTime, now);
+
+            // 如果之前是离线状态，增加离线次数（因为这是一次新的上线，说明之前离线过）
+            if (device.getOnlineStatus() != null && device.getOnlineStatus() == 0) {
+                // 设备从离线变为在线，说明是一次新的连接
+                wrapper.set(Device::getOfflineCount,
+                        device.getOfflineCount() != null ? device.getOfflineCount() + 1 : 1);
+            }
+        } else {
+            // 设备离线
+            wrapper.set(Device::getOnlineStatus, 0)
+                    .set(Device::getLastHeartbeat, now);
+
+            // 计算本次在线时长并累加
+            if (device.getLastOnlineTime() != null && device.getOnlineStatus() != null && device.getOnlineStatus() == 1) {
+                // 之前是在线状态，计算在线时长
+                long duration = java.time.Duration.between(device.getLastOnlineTime(), now).getSeconds();
+                if (duration > 0) {
+                    long totalDuration = device.getTotalOnlineDuration() != null ? device.getTotalOnlineDuration() : 0;
+                    wrapper.set(Device::getTotalOnlineDuration, totalDuration + duration);
+                }
+            }
+
+            // 清除当前播放内容信息
+            wrapper.set(Device::getCurrentContentType, null)
+                    .set(Device::getCurrentContentId, null)
+                    .set(Device::getPlayStatus, null)
+                    .set(Device::getContentStartTime, null);
+        }
+
+        update(wrapper);
+    }
+
+    /**
+     * 更新设备心跳
+     */
+    public void updateHeartbeat(String deviceCode) {
+        Device device = getOne(new LambdaQueryWrapper<Device>().eq(Device::getDeviceCode, deviceCode));
+        if (device == null) {
+            return;
+        }
+
+        LocalDateTime now = LocalDateTime.now();
         LambdaUpdateWrapper<Device> wrapper = new LambdaUpdateWrapper<>();
         wrapper.eq(Device::getDeviceCode, deviceCode)
-                .set(Device::getOnlineStatus, online ? 1 : 0)
-                .set(Device::getLastHeartbeat, LocalDateTime.now());
+                .set(Device::getLastHeartbeat, now);
+
+        // 如果设备之前是离线状态，现在收到心跳说明设备上线了
+        if (device.getOnlineStatus() == null || device.getOnlineStatus() == 0) {
+            wrapper.set(Device::getOnlineStatus, 1)
+                    .set(Device::getLastOnlineTime, now);
+        }
+
         update(wrapper);
+    }
+
+    /**
+     * 更新设备当前播放内容
+     */
+    public void updateCurrentContent(String deviceCode, Integer contentType, Long contentId) {
+        LambdaUpdateWrapper<Device> wrapper = new LambdaUpdateWrapper<>();
+        wrapper.eq(Device::getDeviceCode, deviceCode)
+                .set(Device::getCurrentContentType, contentType)
+                .set(Device::getCurrentContentId, contentId)
+                .set(Device::getPlayStatus, 1)
+                .set(Device::getContentStartTime, LocalDateTime.now());
+        update(wrapper);
+    }
+
+    /**
+     * 计算设备当前在线时长（秒）
+     */
+    public Long calculateCurrentOnlineDuration(Long deviceId) {
+        Device device = getById(deviceId);
+        if (device == null || device.getOnlineStatus() == null || device.getOnlineStatus() != 1) {
+            return 0L;
+        }
+
+        if (device.getLastOnlineTime() == null) {
+            return 0L;
+        }
+
+        // 累计在线时长 + 本次在线时长
+        long totalDuration = device.getTotalOnlineDuration() != null ? device.getTotalOnlineDuration() : 0;
+        long currentDuration = java.time.Duration.between(device.getLastOnlineTime(), LocalDateTime.now()).getSeconds();
+
+        return totalDuration + currentDuration;
     }
 
     @Override

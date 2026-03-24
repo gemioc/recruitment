@@ -83,17 +83,22 @@ CREATE TABLE IF NOT EXISTS `t_device` (
   `remark` VARCHAR(500) DEFAULT NULL COMMENT '备注',
   `status` TINYINT NOT NULL DEFAULT 1 COMMENT '使用状态:1-在用 2-闲置',
   `online_status` TINYINT NOT NULL DEFAULT 0 COMMENT '在线状态:0-离线 1-在线',
+  `last_online_time` DATETIME DEFAULT NULL COMMENT '最后上线时间',
   `last_heartbeat` DATETIME DEFAULT NULL COMMENT '最后心跳时间',
+  `total_online_duration` BIGINT DEFAULT 0 COMMENT '累计在线时长(秒)',
+  `offline_count` INT DEFAULT 0 COMMENT '离线次数',
   `current_content_type` TINYINT DEFAULT NULL COMMENT '当前展示内容类型:1-海报 2-宣传片',
   `current_content_id` BIGINT DEFAULT NULL COMMENT '当前展示内容ID',
   `play_status` TINYINT DEFAULT NULL COMMENT '播放状态:1-播放中 2-暂停',
+  `content_start_time` DATETIME DEFAULT NULL COMMENT '当前内容开始播放时间',
   `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `deleted` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除:0-未删除 1-已删除',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_device_code` (`device_code`),
   KEY `idx_group_id` (`group_id`),
-  KEY `idx_online_status` (`online_status`)
+  KEY `idx_online_status` (`online_status`),
+  KEY `idx_last_online_time` (`last_online_time`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='电视终端设备表';
 
 -- 5. 海报模板表
@@ -223,3 +228,14 @@ INSERT INTO `t_system_config` (`config_key`, `config_value`, `description`) VALU
 ('company_phone', '', '公司电话'),
 ('default_poster_duration', '10', '默认海报轮播时长(秒)'),
 ('default_video_loop', '0', '默认视频循环次数(0为无限循环)');
+
+-- ============================================
+-- 数据库升级脚本（针对已存在的数据库执行）
+-- ============================================
+
+-- 为t_device表添加设备状态统计相关字段
+-- ALTER TABLE `t_device` ADD COLUMN `last_online_time` DATETIME DEFAULT NULL COMMENT '最后上线时间' AFTER `online_status`;
+-- ALTER TABLE `t_device` ADD COLUMN `total_online_duration` BIGINT DEFAULT 0 COMMENT '累计在线时长(秒)' AFTER `last_heartbeat`;
+-- ALTER TABLE `t_device` ADD COLUMN `offline_count` INT DEFAULT 0 COMMENT '离线次数' AFTER `total_online_duration`;
+-- ALTER TABLE `t_device` ADD COLUMN `content_start_time` DATETIME DEFAULT NULL COMMENT '当前内容开始播放时间' AFTER `play_status`;
+-- ALTER TABLE `t_device` ADD INDEX `idx_last_online_time` (`last_online_time`);
