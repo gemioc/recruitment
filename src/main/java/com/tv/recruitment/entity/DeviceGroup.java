@@ -29,4 +29,16 @@ public class DeviceGroup extends BaseEntity {
      */
     @TableField(fill = FieldFill.INSERT)
     private Long createBy;
+
+    /**
+     * 设备数量（非数据库字段）
+     */
+    @TableField(exist = false)
+    private Integer deviceCount;
+
+    /**
+     * 在线设备数量（非数据库字段）
+     */
+    @TableField(exist = false)
+    private Integer onlineCount;
 }

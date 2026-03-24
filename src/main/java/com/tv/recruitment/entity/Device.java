@@ -74,4 +74,10 @@ public class Device extends BaseEntity {
      * 播放状态: 1-播放中 2-暂停
      */
     private Integer playStatus;
+
+    /**
+     * 分组名称（非数据库字段）
+     */
+    @TableField(exist = false)
+    private String groupName;
 }

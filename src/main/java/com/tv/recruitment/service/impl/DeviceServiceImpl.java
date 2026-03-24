@@ -5,6 +5,8 @@ import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tv.recruitment.entity.Device;
+import com.tv.recruitment.entity.DeviceGroup;
+import com.tv.recruitment.mapper.DeviceGroupMapper;
 import com.tv.recruitment.mapper.DeviceMapper;
 import com.tv.recruitment.service.DeviceService;
 import org.springframework.stereotype.Service;
@@ -14,12 +16,20 @@ import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 /**
  * 设备服务实现
  */
 @Service
 public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> implements DeviceService {
+
+    private final DeviceGroupMapper deviceGroupMapper;
+
+    public DeviceServiceImpl(DeviceGroupMapper deviceGroupMapper) {
+        this.deviceGroupMapper = deviceGroupMapper;
+    }
 
     @Override
     public Page<Device> page(Integer pageNum, Integer pageSize, String deviceCode, String deviceName,
@@ -47,7 +57,28 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
 
         wrapper.orderByDesc(Device::getCreateTime);
 
-        return page(new Page<>(pageNum, pageSize), wrapper);
+        Page<Device> result = page(new Page<>(pageNum, pageSize), wrapper);
+
+        // 设置分组名称
+        List<Device> devices = result.getRecords();
+        Set<Long> groupIds = devices.stream()
+                .map(Device::getGroupId)
+                .filter(id -> id != null)
+                .collect(Collectors.toSet());
+
+        if (!groupIds.isEmpty()) {
+            List<DeviceGroup> groups = deviceGroupMapper.selectBatchIds(groupIds);
+            Map<Long, String> groupNameMap = groups.stream()
+                    .collect(Collectors.toMap(DeviceGroup::getId, DeviceGroup::getGroupName));
+
+            devices.forEach(device -> {
+                if (device.getGroupId() != null) {
+                    device.setGroupName(groupNameMap.get(device.getGroupId()));
+                }
+            });
+        }
+
+        return result;
     }
 
     @Override

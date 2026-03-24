@@ -30,12 +30,12 @@ public class Job extends BaseEntity {
     /**
      * 薪资下限
      */
-    private BigDecimal salaryMin;
+    private Integer salaryMin;
 
     /**
      * 薪资上限
      */
-    private BigDecimal salaryMax;
+    private Integer salaryMax;
 
     /**
      * 工作地址

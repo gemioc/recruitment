@@ -3,6 +3,7 @@ package com.tv.recruitment.controller;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tv.recruitment.common.result.Result;
+import com.tv.recruitment.dto.response.OperationTypeResponse;
 import com.tv.recruitment.entity.OperationLog;
 import com.tv.recruitment.mapper.OperationLogMapper;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,15 +42,15 @@ public class LogController {
 
     @Operation(summary = "获取操作类型列表")
     @GetMapping("/types")
-    public Result<List<OperationType>> getTypes() {
+    public Result<List<OperationTypeResponse>> getTypes() {
         return Result.success(List.of(
-                new OperationType("LOGIN", "用户登录"),
-                new OperationType("LOGOUT", "用户退出"),
-                new OperationType("CREATE_JOB", "新增职位"),
-                new OperationType("UPDATE_JOB", "编辑职位"),
-                new OperationType("DELETE_JOB", "删除职位"),
-                new OperationType("CREATE_POSTER", "生成海报"),
-                new OperationType("PUSH_CONTENT", "推送内容")
+                new OperationTypeResponse("LOGIN", "用户登录"),
+                new OperationTypeResponse("LOGOUT", "用户退出"),
+                new OperationTypeResponse("CREATE_JOB", "新增职位"),
+                new OperationTypeResponse("UPDATE_JOB", "编辑职位"),
+                new OperationTypeResponse("DELETE_JOB", "删除职位"),
+                new OperationTypeResponse("CREATE_POSTER", "生成海报"),
+                new OperationTypeResponse("PUSH_CONTENT", "推送内容")
         ));
     }
 
@@ -58,12 +59,5 @@ public class LogController {
     public Result<Void> clear() {
         operationLogMapper.delete(null);
         return Result.success();
-    }
-
-    @lombok.Data
-    @lombok.AllArgsConstructor
-    public static class OperationType {
-        private String code;
-        private String name;
     }
 }

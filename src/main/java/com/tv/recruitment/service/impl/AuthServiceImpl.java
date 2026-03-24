@@ -4,19 +4,20 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.tv.recruitment.common.exception.BusinessException;
 import com.tv.recruitment.common.exception.ErrorCode;
 import com.tv.recruitment.common.utils.JwtUtils;
+import com.tv.recruitment.common.utils.SecurityUtils;
 import com.tv.recruitment.dto.request.LoginRequest;
 import com.tv.recruitment.dto.response.LoginResponse;
+import com.tv.recruitment.dto.response.UserInfoResponse;
 import com.tv.recruitment.entity.User;
 import com.tv.recruitment.mapper.UserMapper;
 import com.tv.recruitment.security.UserPrincipal;
 import com.tv.recruitment.service.AuthService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Base64;
 
 /**
  * 认证服务实现
@@ -40,8 +41,11 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.PASSWORD_ERROR);
         }
 
+        // Base64解码密码
+        String password = new String(Base64.getDecoder().decode(request.getPassword()));
+
         // 验证密码
-        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new BusinessException(ErrorCode.PASSWORD_ERROR);
         }
 
@@ -64,7 +68,7 @@ public class AuthServiceImpl implements AuthService {
         response.setToken(token);
         response.setExpiresIn(86400L);
 
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
+        UserInfoResponse userInfo = new UserInfoResponse();
         userInfo.setId(user.getId());
         userInfo.setUsername(user.getUsername());
         userInfo.setRealName(user.getRealName());
@@ -76,8 +80,8 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public LoginResponse.UserInfo getCurrentUser() {
-        UserPrincipal principal = getUserPrincipal();
+    public UserInfoResponse getCurrentUser() {
+        UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal();
         if (principal == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
@@ -87,7 +91,7 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
-        LoginResponse.UserInfo userInfo = new LoginResponse.UserInfo();
+        UserInfoResponse userInfo = new UserInfoResponse();
         userInfo.setId(user.getId());
         userInfo.setUsername(user.getUsername());
         userInfo.setRealName(user.getRealName());
@@ -99,7 +103,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     public void updatePassword(String oldPassword, String newPassword) {
-        UserPrincipal principal = getUserPrincipal();
+        UserPrincipal principal = SecurityUtils.getCurrentUserPrincipal();
         if (principal == null) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
         }
@@ -109,15 +113,19 @@ public class AuthServiceImpl implements AuthService {
             throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
 
+        // Base64解码密码
+        String decodedOldPassword = new String(Base64.getDecoder().decode(oldPassword));
+        String decodedNewPassword = new String(Base64.getDecoder().decode(newPassword));
+
         // 验证旧密码
-        if (!passwordEncoder.matches(oldPassword, user.getPassword())) {
+        if (!passwordEncoder.matches(decodedOldPassword, user.getPassword())) {
             throw new BusinessException(ErrorCode.PASSWORD_ERROR);
         }
 
         // 更新密码
         User updateUser = new User();
         updateUser.setId(user.getId());
-        updateUser.setPassword(passwordEncoder.encode(newPassword));
+        updateUser.setPassword(passwordEncoder.encode(decodedNewPassword));
         userMapper.updateById(updateUser);
     }
 
@@ -126,11 +134,18 @@ public class AuthServiceImpl implements AuthService {
         // Token无状态，无需特殊处理
     }
 
-    private UserPrincipal getUserPrincipal() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getDetails() instanceof UserPrincipal) {
-            return (UserPrincipal) authentication.getDetails();
+    @Override
+    public void updateAdminPassword(String encodedPassword) {
+        User user = userMapper.selectOne(
+                new LambdaQueryWrapper<User>().eq(User::getUsername, "admin")
+        );
+        if (user == null) {
+            throw new BusinessException(ErrorCode.USER_NOT_FOUND);
         }
-        return null;
+
+        User updateUser = new User();
+        updateUser.setId(user.getId());
+        updateUser.setPassword(encodedPassword);
+        userMapper.updateById(updateUser);
     }
 }

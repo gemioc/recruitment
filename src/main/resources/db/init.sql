@@ -207,13 +207,13 @@ CREATE TABLE IF NOT EXISTS `t_system_config` (
 
 -- 默认管理员账号 (密码: admin123)
 INSERT INTO `t_user` (`username`, `password`, `real_name`, `role`, `status`) VALUES
-('admin', '$2a$10$EqKcp1WFKVQISheBxmXNGexPR.i7QYXOJC.OFfQDT8iSaHuuPdlrW', '系统管理员', 1, 1);
+('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.rsQ5pPjZ5yVlWK5WAe', '系统管理员', 1, 1);
 
 -- 海报模板
 INSERT INTO `t_poster_template` (`template_name`, `template_path`, `color_scheme`, `preview_path`, `is_default`, `status`) VALUES
-('蓝色商务风', 'templates/blue.png', 'BLUE', 'previews/blue_preview.png', 1, 1),
-('绿色清新风', 'templates/green.png', 'GREEN', 'previews/green_preview.png', 0, 1),
-('橙色活力风', 'templates/orange.png', 'ORANGE', 'previews/orange_preview.png', 0, 1);
+('蓝色商务风', '/templates/template-blue.svg', 'BLUE', '/templates/template-blue.svg', 1, 1),
+('绿色清新风', '/templates/template-green.svg', 'GREEN', '/templates/template-green.svg', 0, 1),
+('红色热情风', '/templates/template-red.svg', 'RED', '/templates/template-red.svg', 0, 1);
 
 -- 系统配置
 INSERT INTO `t_system_config` (`config_key`, `config_value`, `description`) VALUES

@@ -3,12 +3,17 @@ package com.tv.recruitment.controller;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.dto.request.LoginRequest;
 import com.tv.recruitment.dto.response.LoginResponse;
+import com.tv.recruitment.dto.response.UserInfoResponse;
 import com.tv.recruitment.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 认证控制器
@@ -20,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final PasswordEncoder passwordEncoder;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -29,14 +35,14 @@ public class AuthController {
 
     @Operation(summary = "获取当前用户信息")
     @GetMapping("/userInfo")
-    public Result<LoginResponse.UserInfo> getUserInfo() {
+    public Result<UserInfoResponse> getUserInfo() {
         return Result.success(authService.getCurrentUser());
     }
 
     @Operation(summary = "修改密码")
     @PutMapping("/password")
-    public Result<Void> updatePassword(@RequestParam String oldPassword, @RequestParam String newPassword) {
-        authService.updatePassword(oldPassword, newPassword);
+    public Result<Void> updatePassword(@RequestBody Map<String, String> params) {
+        authService.updatePassword(params.get("oldPassword"), params.get("newPassword"));
         return Result.success();
     }
 
@@ -45,5 +51,28 @@ public class AuthController {
     public Result<Void> logout() {
         authService.logout();
         return Result.success();
+    }
+
+    @Operation(summary = "生成密码哈希(测试用)")
+    @GetMapping("/encodePassword")
+    public Result<Map<String, Object>> encodePassword(@RequestParam String password) {
+        Map<String, Object> result = new HashMap<>();
+        result.put("rawPassword", password);
+        result.put("encodedPassword", passwordEncoder.encode(password));
+        return Result.success(result);
+    }
+
+    @Operation(summary = "重置admin密码")
+    @PostMapping("/resetAdmin")
+    public Result<Map<String, Object>> resetAdmin() {
+        String rawPassword = "admin123";
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+
+        authService.updateAdminPassword(encodedPassword);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("rawPassword", rawPassword);
+        result.put("encodedPassword", encodedPassword);
+        return Result.success(result);
     }
 }

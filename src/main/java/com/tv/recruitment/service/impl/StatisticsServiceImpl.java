@@ -1,6 +1,7 @@
 package com.tv.recruitment.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.tv.recruitment.common.utils.CsvExportUtils;
 import com.tv.recruitment.entity.*;
 import com.tv.recruitment.mapper.*;
 import com.tv.recruitment.service.StatisticsService;
@@ -11,7 +12,6 @@ import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.io.OutputStream;
-import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -216,26 +216,26 @@ public class StatisticsServiceImpl implements StatisticsService {
     @Override
     public void exportStatistics(String startDate, String endDate, HttpServletResponse response) {
         try {
-            // 设置响应头
-            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
-            response.setCharacterEncoding("utf-8");
-            String fileName = URLEncoder.encode("统计数据_" + LocalDate.now(), StandardCharsets.UTF_8);
-            response.setHeader("Content-Disposition", "attachment;filename=" + fileName + ".xlsx");
+            // 设置CSV响应头
+            String fileName = "统计数据_" + LocalDate.now();
+            CsvExportUtils.setCsvResponseHeaders(response, fileName);
 
-            // 简化处理：导出CSV格式
+            // 导出CSV格式
             OutputStream out = response.getOutputStream();
+            CsvExportUtils.writeBom(out);
+
             StringBuilder sb = new StringBuilder();
             sb.append("类型,数量\n");
 
             Map<String, Object> deviceStats = getDeviceStatistics();
-            sb.append("设备总数,").append(deviceStats.get("total")).append("\n");
-            sb.append("在线设备,").append(deviceStats.get("online")).append("\n");
-            sb.append("离线设备,").append(deviceStats.get("offline")).append("\n");
+            sb.append(CsvExportUtils.buildCsvLine("设备总数", String.valueOf(deviceStats.get("total"))));
+            sb.append(CsvExportUtils.buildCsvLine("在线设备", String.valueOf(deviceStats.get("online"))));
+            sb.append(CsvExportUtils.buildCsvLine("离线设备", String.valueOf(deviceStats.get("offline"))));
 
             Map<String, Object> contentStats = getContentStatistics();
-            sb.append("职位数量,").append(contentStats.get("jobCount")).append("\n");
-            sb.append("海报数量,").append(contentStats.get("posterCount")).append("\n");
-            sb.append("视频数量,").append(contentStats.get("videoCount")).append("\n");
+            sb.append(CsvExportUtils.buildCsvLine("职位数量", String.valueOf(contentStats.get("jobCount"))));
+            sb.append(CsvExportUtils.buildCsvLine("海报数量", String.valueOf(contentStats.get("posterCount"))));
+            sb.append(CsvExportUtils.buildCsvLine("视频数量", String.valueOf(contentStats.get("videoCount"))));
 
             out.write(sb.toString().getBytes(StandardCharsets.UTF_8));
             out.flush();

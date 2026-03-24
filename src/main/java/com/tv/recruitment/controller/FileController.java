@@ -47,8 +47,27 @@ public class FileController {
     public ResponseEntity<Resource> getPoster(HttpServletRequest request) {
         String filePath = extractFilePath(request, "/files/posters/");
         Resource resource = fileStorageService.loadFile("posters/" + filePath);
+
+        // 根据文件扩展名确定Content-Type
+        String contentType = MediaType.IMAGE_PNG_VALUE;
+        if (filePath.toLowerCase().endsWith(".svg")) {
+            contentType = "image/svg+xml";
+        } else if (filePath.toLowerCase().endsWith(".jpg") || filePath.toLowerCase().endsWith(".jpeg")) {
+            contentType = MediaType.IMAGE_JPEG_VALUE;
+        }
+
         return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_PNG)
+                .contentType(MediaType.parseMediaType(contentType))
+                .body(resource);
+    }
+
+    @Operation(summary = "访问模板")
+    @GetMapping("/templates/**")
+    public ResponseEntity<Resource> getTemplate(HttpServletRequest request) {
+        String filePath = extractFilePath(request, "/files/templates/");
+        Resource resource = fileStorageService.loadFile("templates/" + filePath);
+        return ResponseEntity.ok()
+                .contentType(MediaType.valueOf("image/svg+xml"))
                 .body(resource);
     }
 

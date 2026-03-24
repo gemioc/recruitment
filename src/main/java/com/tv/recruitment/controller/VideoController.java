@@ -39,21 +39,18 @@ public class VideoController {
         return Result.success(result);
     }
 
-    @Operation(summary = "上传视频")
+    @Operation(summary = "上传视频文件")
     @PostMapping("/upload")
-    public Result<Video> upload(@RequestParam("file") MultipartFile file,
-                                 @RequestParam(required = false) String videoName) {
+    public Result<java.util.Map<String, Object>> upload(@RequestParam("file") MultipartFile file) {
         // 保存文件
         String filePath = fileStorageService.saveFile(file, "videos");
 
-        Video video = new Video();
-        video.setVideoName(videoName != null ? videoName : file.getOriginalFilename());
-        video.setFilePath(filePath);
-        video.setFileSize(file.getSize());
-        // TODO: 解析视频时长和分辨率
-        videoMapper.insert(video);
+        java.util.Map<String, Object> result = new java.util.HashMap<>();
+        result.put("filePath", filePath);
+        result.put("fileSize", file.getSize());
+        result.put("videoName", file.getOriginalFilename());
 
-        return Result.success(video);
+        return Result.success(result);
     }
 
     @Operation(summary = "创建视频记录")

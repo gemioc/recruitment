@@ -2,6 +2,7 @@ package com.tv.recruitment.service;
 
 import com.tv.recruitment.dto.request.LoginRequest;
 import com.tv.recruitment.dto.response.LoginResponse;
+import com.tv.recruitment.dto.response.UserInfoResponse;
 
 /**
  * 认证服务
@@ -16,7 +17,7 @@ public interface AuthService {
     /**
      * 获取当前用户信息
      */
-    LoginResponse.UserInfo getCurrentUser();
+    UserInfoResponse getCurrentUser();
 
     /**
      * 修改密码
@@ -27,4 +28,9 @@ public interface AuthService {
      * 退出登录
      */
     void logout();
+
+    /**
+     * 更新admin密码
+     */
+    void updateAdminPassword(String encodedPassword);
 }
