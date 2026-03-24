@@ -1,5 +1,6 @@
 package com.tv.recruitment.controller;
 
+import com.tv.recruitment.common.annotation.Log;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.dto.request.LoginRequest;
 import com.tv.recruitment.dto.response.LoginResponse;
@@ -29,6 +30,7 @@ public class AuthController {
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
+    @Log(type = "LOGIN", desc = "用户登录", saveRequest = false, saveResponse = false)
     public Result<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
         return Result.success(authService.login(request));
     }
@@ -41,6 +43,7 @@ public class AuthController {
 
     @Operation(summary = "修改密码")
     @PutMapping("/password")
+    @Log(type = "UPDATE_PASSWORD", desc = "修改密码", saveRequest = false)
     public Result<Void> updatePassword(@RequestBody Map<String, String> params) {
         authService.updatePassword(params.get("oldPassword"), params.get("newPassword"));
         return Result.success();
@@ -48,6 +51,7 @@ public class AuthController {
 
     @Operation(summary = "退出登录")
     @PostMapping("/logout")
+    @Log(type = "LOGOUT", desc = "用户退出")
     public Result<Void> logout() {
         authService.logout();
         return Result.success();

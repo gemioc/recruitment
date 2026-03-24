@@ -3,6 +3,7 @@ package com.tv.recruitment.controller;
 import cn.hutool.json.JSONUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tv.recruitment.common.annotation.Log;
 import com.tv.recruitment.common.enums.PushStatusEnum;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.common.utils.CsvExportUtils;
@@ -35,8 +36,6 @@ import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.tv.recruitment.common.utils.SecurityUtils.getCurrentUserId;
-
 /**
  * 推送控制器
  */
@@ -55,6 +54,7 @@ public class PushController {
 
     @Operation(summary = "推送海报")
     @PostMapping("/poster")
+    @Log(type = "PUSH", desc = "推送海报")
     public Result<Long> pushPoster(@RequestBody PushRequest request) {
         // 获取海报名称
         String contentName = null;
@@ -76,7 +76,7 @@ public class PushController {
         record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
         record.setPushStatus(0);
         record.setPushTime(LocalDateTime.now());
-        record.setPushBy(getCurrentUserId());
+        record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
         // 执行推送
@@ -87,6 +87,7 @@ public class PushController {
 
     @Operation(summary = "推送视频")
     @PostMapping("/video")
+    @Log(type = "PUSH", desc = "推送视频")
     public Result<Long> pushVideo(@RequestBody PushRequest request) {
         // 获取视频名称
         String contentName = null;
@@ -107,7 +108,7 @@ public class PushController {
         record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
         record.setPushStatus(0);
         record.setPushTime(LocalDateTime.now());
-        record.setPushBy(getCurrentUserId());
+        record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
         executePush(record, request);
@@ -117,6 +118,7 @@ public class PushController {
 
     @Operation(summary = "设备控制")
     @PostMapping("/control")
+    @Log(type = "PUSH", desc = "设备控制")
     public Result<Void> control(@RequestBody ControlRequest request) {
         for (Long deviceId : request.getDeviceIds()) {
             // TODO: 根据设备ID获取设备编码
@@ -263,6 +265,7 @@ public class PushController {
 
     @Operation(summary = "批量推送")
     @PostMapping("/multiple")
+    @Log(type = "PUSH", desc = "批量推送内容")
     public Result<Long> pushMultiple(@RequestBody PushRequest request) {
         // 转换contentType: poster -> 1, video -> 2
         int contentTypeInt = "video".equals(request.getContentType()) ? 2 : 1;
@@ -295,8 +298,7 @@ public class PushController {
         record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
         record.setPushStatus(0);
         record.setPushTime(LocalDateTime.now());
-        record.setPushBy(getCurrentUserId());
-        record.setPushTime(LocalDateTime.now());
+        record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
         executePush(record, request);

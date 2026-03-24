@@ -1,6 +1,7 @@
 package com.tv.recruitment.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tv.recruitment.common.annotation.Log;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.entity.Job;
 import com.tv.recruitment.service.JobService;
@@ -41,6 +42,7 @@ public class JobController {
 
     @Operation(summary = "新增职位")
     @PostMapping
+    @Log(type = "CREATE", desc = "新增职位")
     public Result<Void> save(@RequestBody Job job) {
         jobService.save(job);
         return Result.success();
@@ -48,6 +50,7 @@ public class JobController {
 
     @Operation(summary = "编辑职位")
     @PutMapping("/{id}")
+    @Log(type = "UPDATE", desc = "编辑职位")
     public Result<Void> update(@PathVariable Long id, @RequestBody Job job) {
         job.setId(id);
         jobService.updateById(job);
@@ -56,6 +59,7 @@ public class JobController {
 
     @Operation(summary = "删除职位")
     @DeleteMapping("/{id}")
+    @Log(type = "DELETE", desc = "删除职位")
     public Result<Void> delete(@PathVariable Long id) {
         jobService.removeById(id);
         return Result.success();
@@ -63,6 +67,7 @@ public class JobController {
 
     @Operation(summary = "更改状态")
     @PutMapping("/{id}/status")
+    @Log(type = "UPDATE", desc = "更改职位状态")
     public Result<Void> updateStatus(@PathVariable Long id, @RequestParam Integer status) {
         jobService.updateStatus(id, status);
         return Result.success();
@@ -70,6 +75,7 @@ public class JobController {
 
     @Operation(summary = "批量更改状态")
     @PutMapping("/batch/status")
+    @Log(type = "UPDATE", desc = "批量更改职位状态")
     public Result<Void> batchUpdateStatus(@RequestBody List<Long> ids, @RequestParam Integer status) {
         jobService.batchUpdateStatus(ids, status);
         return Result.success();

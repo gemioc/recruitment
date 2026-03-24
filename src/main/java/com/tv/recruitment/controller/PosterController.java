@@ -2,6 +2,7 @@ package com.tv.recruitment.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.tv.recruitment.common.annotation.Log;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.common.utils.FileDownloadUtils;
 import com.tv.recruitment.common.utils.FormatUtils;
@@ -87,6 +88,7 @@ public class PosterController {
 
     @Operation(summary = "生成海报")
     @PostMapping
+    @Log(type = "CREATE", desc = "生成海报")
     public Result<Poster> generate(@RequestBody Poster poster) {
         // 使用海报生成服务生成海报
         String filePath = posterGenerateService.generateFromJob(poster);
@@ -125,6 +127,7 @@ public class PosterController {
 
     @Operation(summary = "生成海报(别名)")
     @PostMapping("/generate")
+    @Log(type = "CREATE", desc = "生成海报")
     public Result<PosterResponse> generateAlias(@RequestBody Poster poster) {
         // 使用海报生成服务生成海报
         String filePath = posterGenerateService.generateFromJob(poster);
@@ -135,6 +138,7 @@ public class PosterController {
 
     @Operation(summary = "批量生成海报")
     @PostMapping("/batch")
+    @Log(type = "CREATE", desc = "批量生成海报")
     public Result<List<Poster>> batchGenerate(@RequestBody Map<String, Object> data) {
         List<Long> jobIds = (List<Long>) data.get("jobIds");
         Long templateId = data.get("templateId") != null ? Long.valueOf(data.get("templateId").toString()) : null;
@@ -240,6 +244,7 @@ public class PosterController {
 
     @Operation(summary = "删除海报")
     @DeleteMapping("/{id}")
+    @Log(type = "DELETE", desc = "删除海报")
     public Result<Void> delete(@PathVariable Long id) {
         posterMapper.deleteById(id);
         return Result.success();

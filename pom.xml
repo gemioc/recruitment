@@ -48,6 +48,12 @@
             <artifactId>spring-boot-starter-websocket</artifactId>
         </dependency>
 
+        <!-- AOP -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
         <!-- MySQL Driver -->
         <dependency>
             <groupId>com.mysql</groupId>
@@ -93,6 +99,12 @@
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
             <version>${hutool.version}</version>
+        </dependency>
+
+        <!-- Jackson JSR310 时间格式化 -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.datatype</groupId>
+            <artifactId>jackson-datatype-jsr310</artifactId>
         </dependency>
 
         <!-- 图片处理 -->
