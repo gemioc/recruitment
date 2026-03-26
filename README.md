@@ -108,6 +108,25 @@ java -jar target/tv-recruitment-1.0.0.jar
 | 日志 | /api/logs | 操作日志 |
 | 配置 | /api/config | 系统配置 |
 
+## 核心功能模块
+
+| 模块 | 功能说明 |
+|------|----------|
+| 系统登录与权限管理 | 管理员/运营人员双角色，JWT认证 |
+| 职位信息管理 | 职位CRUD、状态管理、Excel导入导出 |
+| 电视终端管理 | 50台设备管理、在线监控、分组管理 |
+| 招聘海报管理 | 海报上传、模板化生成、1920x1080分辨率 |
+| 宣传片管理 | 视频上传、预览管理 |
+| 内容推送控制 | 单台/多台/分组精准推送（WebSocket） |
+| 数据统计与日志 | 操作日志、数据统计 |
+
+## 相关项目
+
+| 项目 | 说明 |
+|------|------|
+| [tv_recru_app](../tv_recru_app) | Android电视终端应用 |
+| 前端管理界面 | Vue3前端（待创建） |
+
 ## WebSocket
 
 连接地址：`ws://localhost:8080/ws?token={jwt}&deviceCode={code}`
@@ -142,3 +161,18 @@ mvn clean package -DskipTests
 # 运行（生产环境）
 java -jar tv-recruitment-1.0.0.jar --spring.profiles.active=prod
 ```
+
+## 版本历史
+
+- **v1.0.0** - 初始版本
+  - 用户认证与权限管理
+  - 职位信息管理
+  - 电视终端管理
+  - 海报管理
+  - 视频管理
+  - WebSocket实时推送
+  - 操作日志
+
+## License
+
+Private - Internal Use Only
