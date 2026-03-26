@@ -10,7 +10,8 @@ import java.util.Map;
 public interface PosterGenerateService {
 
     /**
-     * 根据模板生成海报SVG
+     * 根据模板生成海报PNG
+     * 模板文件使用SVG格式，输出海报为PNG格式（兼容Android Glide加载）
      * @param templateId 模板ID
      * @param data 数据映射
      * @return 生成的海报文件路径

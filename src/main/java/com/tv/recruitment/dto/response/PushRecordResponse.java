@@ -26,6 +26,16 @@ public class PushRecordResponse {
     private String contentTitle;
 
     /**
+     * 推送类型：1-单台 2-多台 3-分组
+     */
+    private Integer pushType;
+
+    /**
+     * 分组名称（分组推送时）
+     */
+    private String groupName;
+
+    /**
      * 目标设备名称
      */
     private String deviceNames;

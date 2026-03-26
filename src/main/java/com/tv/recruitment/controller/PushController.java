@@ -13,10 +13,12 @@ import com.tv.recruitment.dto.request.ControlRequest;
 import com.tv.recruitment.dto.request.PushRequest;
 import com.tv.recruitment.dto.response.PushRecordResponse;
 import com.tv.recruitment.entity.Device;
+import com.tv.recruitment.entity.DeviceGroup;
 import com.tv.recruitment.entity.Poster;
 import com.tv.recruitment.entity.PushRecord;
 import com.tv.recruitment.entity.User;
 import com.tv.recruitment.entity.Video;
+import com.tv.recruitment.mapper.DeviceGroupMapper;
 import com.tv.recruitment.mapper.DeviceMapper;
 import com.tv.recruitment.mapper.PosterMapper;
 import com.tv.recruitment.mapper.PushRecordMapper;
@@ -27,18 +29,22 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 import java.io.OutputStream;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 /**
  * 推送控制器
  */
+@Slf4j
 @Tag(name = "推送管理")
 @RestController
 @RequestMapping("/push")
@@ -50,6 +56,7 @@ public class PushController {
     private final PosterMapper posterMapper;
     private final VideoMapper videoMapper;
     private final DeviceMapper deviceMapper;
+    private final DeviceGroupMapper deviceGroupMapper;
     private final UserMapper userMapper;
 
     @Operation(summary = "推送海报")
@@ -65,22 +72,26 @@ public class PushController {
             }
         }
 
+        // 处理分组推送
+        List<Long> targetIds = resolveTargetIds(request);
+
         // 创建推送记录
         PushRecord record = new PushRecord();
         record.setContentType(1);
         record.setContentId(request.getPosterId());
         record.setContentName(contentName);
         record.setPushType(determinePushType(request));
-        record.setTargetIds(JSONUtil.toJsonStr(request.getTargetIds()));
+        record.setGroupId(request.getGroupId());
+        record.setTargetIds(JSONUtil.toJsonStr(targetIds));
         record.setPlayRule(JSONUtil.toJsonStr(request.getPlayRule()));
-        record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
+        record.setDeviceCount(targetIds.size());
         record.setPushStatus(0);
         record.setPushTime(LocalDateTime.now());
         record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
         // 执行推送
-        executePush(record, request);
+        executePush(record, targetIds);
 
         return Result.success(record.getId());
     }
@@ -98,20 +109,24 @@ public class PushController {
             }
         }
 
+        // 处理分组推送
+        List<Long> targetIds = resolveTargetIds(request);
+
         PushRecord record = new PushRecord();
         record.setContentType(2);
         record.setContentId(request.getVideoId());
         record.setContentName(contentName);
         record.setPushType(determinePushType(request));
-        record.setTargetIds(JSONUtil.toJsonStr(request.getTargetIds()));
+        record.setGroupId(request.getGroupId());
+        record.setTargetIds(JSONUtil.toJsonStr(targetIds));
         record.setPlayRule(JSONUtil.toJsonStr(request.getPlayRule()));
-        record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
+        record.setDeviceCount(targetIds.size());
         record.setPushStatus(0);
         record.setPushTime(LocalDateTime.now());
         record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
-        executePush(record, request);
+        executePush(record, targetIds);
 
         return Result.success(record.getId());
     }
@@ -121,8 +136,10 @@ public class PushController {
     @Log(type = "PUSH", desc = "设备控制")
     public Result<Void> control(@RequestBody ControlRequest request) {
         for (Long deviceId : request.getDeviceIds()) {
-            // TODO: 根据设备ID获取设备编码
-            // webSocketHandler.sendControl(deviceCode, request.getAction());
+            Device device = deviceMapper.selectById(deviceId);
+            if (device != null) {
+                webSocketHandler.sendControl(device.getDeviceCode(), request.getAction());
+            }
         }
         return Result.success();
     }
@@ -178,7 +195,7 @@ public class PushController {
 
             // 生成CSV内容
             StringBuilder csv = new StringBuilder();
-            csv.append("ID,内容名称,内容类型,目标设备,设备数量,成功数量,失败数量,推送状态,操作人,推送时间\n");
+            csv.append("ID,内容名称,内容类型,推送类型,目标设备,设备数量,成功数量,失败数量,推送状态,操作人,推送时间\n");
 
             DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
             for (PushRecord record : records) {
@@ -186,6 +203,7 @@ public class PushController {
                 csv.append(resp.getId()).append(",");
                 csv.append(CsvExportUtils.escapeCsv(resp.getContentTitle())).append(",");
                 csv.append("poster".equals(resp.getContentType()) ? "海报" : "视频").append(",");
+                csv.append(getPushTypeText(resp.getPushType())).append(",");
                 csv.append(CsvExportUtils.escapeCsv(resp.getDeviceNames())).append(",");
                 csv.append(resp.getDeviceCount() != null ? resp.getDeviceCount() : 0).append(",");
                 csv.append(resp.getSuccessCount() != null ? resp.getSuccessCount() : 0).append(",");
@@ -207,6 +225,131 @@ public class PushController {
         } catch (IOException e) {
             FileDownloadUtils.writeErrorResponse(response, 500, "导出失败: " + e.getMessage());
         }
+    }
+
+    @Operation(summary = "批量推送")
+    @PostMapping("/multiple")
+    @Log(type = "PUSH", desc = "批量推送内容")
+    public Result<Long> pushMultiple(@RequestBody PushRequest request) {
+        // 转换contentType: poster -> 1, video -> 2
+        int contentTypeInt = "video".equals(request.getContentType()) ? 2 : 1;
+        Long contentId = request.getContentIds() != null && !request.getContentIds().isEmpty()
+            ? request.getContentIds().get(0) : request.getContentId();
+
+        // 获取内容名称
+        String contentName = null;
+        if (contentId != null) {
+            if (contentTypeInt == 1) {
+                Poster poster = posterMapper.selectById(contentId);
+                if (poster != null) {
+                    contentName = poster.getPosterName();
+                }
+            } else {
+                Video video = videoMapper.selectById(contentId);
+                if (video != null) {
+                    contentName = video.getVideoName();
+                }
+            }
+        }
+
+        // 处理分组推送
+        List<Long> targetIds = resolveTargetIds(request);
+
+        if (targetIds.isEmpty()) {
+            return Result.error("请选择推送目标");
+        }
+
+        PushRecord record = new PushRecord();
+        record.setContentType(contentTypeInt);
+        record.setContentId(contentId);
+        record.setContentName(contentName);
+        record.setPushType(determinePushType(request));
+        record.setGroupId(request.getGroupId());
+        record.setTargetIds(JSONUtil.toJsonStr(targetIds));
+        record.setPlayRule(JSONUtil.toJsonStr(request.getPlayRule()));
+        record.setDeviceCount(targetIds.size());
+        record.setPushStatus(0);
+        record.setPushTime(LocalDateTime.now());
+        record.setPushBy(SecurityUtils.getCurrentUserId());
+        pushRecordMapper.insert(record);
+
+        executePush(record, targetIds);
+
+        return Result.success(record.getId());
+    }
+
+    @Operation(summary = "获取分组下的设备ID列表")
+    @GetMapping("/devices/byGroup/{groupId}")
+    public Result<List<Long>> getDeviceIdsByGroup(@PathVariable Long groupId) {
+        List<Device> devices = deviceMapper.selectList(
+                new LambdaQueryWrapper<Device>()
+                        .eq(Device::getGroupId, groupId)
+                        .eq(Device::getStatus, 1)
+        );
+        List<Long> deviceIds = devices.stream()
+                .map(Device::getId)
+                .collect(Collectors.toList());
+        return Result.success(deviceIds);
+    }
+
+    @Operation(summary = "获取分组信息（含设备统计）")
+    @GetMapping("/groups")
+    public Result<List<Map<String, Object>>> getPushGroups() {
+        List<DeviceGroup> groups = deviceGroupMapper.selectList(
+                new LambdaQueryWrapper<DeviceGroup>().orderByAsc(DeviceGroup::getCreateTime)
+        );
+
+        List<Map<String, Object>> result = new ArrayList<>();
+        for (DeviceGroup group : groups) {
+            Map<String, Object> item = new java.util.HashMap<>();
+            item.put("id", group.getId());
+            item.put("groupName", group.getGroupName());
+            item.put("description", group.getDescription());
+
+            // 统计设备数量
+            Long totalCount = deviceMapper.selectCount(
+                    new LambdaQueryWrapper<Device>()
+                            .eq(Device::getGroupId, group.getId())
+                            .eq(Device::getStatus, 1)
+            );
+            Long onlineCount = deviceMapper.selectCount(
+                    new LambdaQueryWrapper<Device>()
+                            .eq(Device::getGroupId, group.getId())
+                            .eq(Device::getStatus, 1)
+                            .eq(Device::getOnlineStatus, 1)
+            );
+
+            item.put("deviceCount", totalCount);
+            item.put("onlineCount", onlineCount);
+            result.add(item);
+        }
+
+        return Result.success(result);
+    }
+
+    /**
+     * 解析目标设备ID列表
+     * 支持按分组推送和按设备ID推送
+     */
+    private List<Long> resolveTargetIds(PushRequest request) {
+        // 如果指定了分组ID，查询分组下所有设备
+        if (request.getGroupId() != null) {
+            List<Device> devices = deviceMapper.selectList(
+                    new LambdaQueryWrapper<Device>()
+                            .eq(Device::getGroupId, request.getGroupId())
+                            .eq(Device::getStatus, 1)
+            );
+            return devices.stream()
+                    .map(Device::getId)
+                    .collect(Collectors.toList());
+        }
+
+        // 否则使用传入的设备ID列表
+        if (request.getTargetIds() != null) {
+            return request.getTargetIds();
+        }
+
+        return new ArrayList<>();
     }
 
     /**
@@ -255,67 +398,87 @@ public class PushController {
     }
 
     /**
-     * 获取状态文本
+     * 执行推送
      */
-    private String getStatusText(Integer status) {
-        if (status == null) return "未知";
-        PushStatusEnum statusEnum = PushStatusEnum.getByCode(status);
-        return statusEnum != null ? statusEnum.getDesc() : "未知";
-    }
+    private void executePush(PushRecord record, List<Long> targetIds) {
+        if (targetIds == null || targetIds.isEmpty()) {
+            return;
+        }
 
-    @Operation(summary = "批量推送")
-    @PostMapping("/multiple")
-    @Log(type = "PUSH", desc = "批量推送内容")
-    public Result<Long> pushMultiple(@RequestBody PushRequest request) {
-        // 转换contentType: poster -> 1, video -> 2
-        int contentTypeInt = "video".equals(request.getContentType()) ? 2 : 1;
-        Long contentId = request.getContentIds() != null && !request.getContentIds().isEmpty()
-            ? request.getContentIds().get(0) : request.getContentId();
+        // 获取内容URL
+        String contentUrl = null;
+        String contentType = record.getContentType() == 1 ? "poster" : "video";
 
-        // 获取内容名称
-        String contentName = null;
-        if (contentId != null) {
-            if (contentTypeInt == 1) {
-                Poster poster = posterMapper.selectById(contentId);
+        if (record.getContentId() != null) {
+            if (record.getContentType() == 1) {
+                Poster poster = posterMapper.selectById(record.getContentId());
                 if (poster != null) {
-                    contentName = poster.getPosterName();
+                    contentUrl = poster.getFilePath();
                 }
             } else {
-                Video video = videoMapper.selectById(contentId);
+                Video video = videoMapper.selectById(record.getContentId());
                 if (video != null) {
-                    contentName = video.getVideoName();
+                    contentUrl = video.getFilePath();
                 }
             }
         }
 
-        PushRecord record = new PushRecord();
-        record.setContentType(contentTypeInt);
-        record.setContentId(contentId);
-        record.setContentName(contentName);
-        record.setPushType(determinePushType(request));
-        record.setTargetIds(JSONUtil.toJsonStr(request.getTargetIds()));
-        record.setPlayRule(JSONUtil.toJsonStr(request.getPlayRule()));
-        record.setDeviceCount(request.getTargetIds() != null ? request.getTargetIds().size() : 0);
-        record.setPushStatus(0);
-        record.setPushTime(LocalDateTime.now());
-        record.setPushBy(SecurityUtils.getCurrentUserId());
-        pushRecordMapper.insert(record);
-
-        executePush(record, request);
-
-        return Result.success(record.getId());
-    }
-
-    private void executePush(PushRecord record, PushRequest request) {
-        List<Long> targetIds = request.getTargetIds();
-        if (targetIds == null || targetIds.isEmpty()) {
+        if (contentUrl == null) {
+            log.warn("内容不存在或已删除，无法推送: contentId={}", record.getContentId());
             return;
         }
-        for (Long deviceId : targetIds) {
-            // TODO: 获取设备编码并推送
-            // String deviceCode = ...;
-            // webSocketHandler.pushContent(deviceCode, contentType, contentUrl, playRule);
+
+        // 转换为文件访问路径：添加 /files 前缀
+        // filePath 格式: /posters/xxx.png 或 posters/xxx.png
+        // 访问路径格式: /files/posters/xxx.png
+        if (!contentUrl.startsWith("/files")) {
+            contentUrl = "/files" + (contentUrl.startsWith("/") ? contentUrl : "/" + contentUrl);
         }
+
+        // 推送到每个设备
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Long deviceId : targetIds) {
+            Device device = deviceMapper.selectById(deviceId);
+            if (device == null) {
+                failCount++;
+                continue;
+            }
+
+            if (webSocketHandler.isOnline(device.getDeviceCode())) {
+                try {
+                    webSocketHandler.pushContent(
+                            device.getDeviceCode(),
+                            contentType,
+                            contentUrl,
+                            record.getPlayRule()
+                    );
+
+                    // 更新设备当前播放内容
+                    device.setCurrentContentType(record.getContentType());
+                    device.setCurrentContentId(record.getContentId());
+                    device.setPlayStatus(1);
+                    device.setContentStartTime(LocalDateTime.now());
+                    deviceMapper.updateById(device);
+
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("推送失败: deviceCode={}, error={}", device.getDeviceCode(), e.getMessage());
+                    failCount++;
+                }
+            } else {
+                log.warn("设备不在线: deviceCode={}", device.getDeviceCode());
+                failCount++;
+            }
+        }
+
+        // 更新推送记录状态
+        record.setSuccessCount(successCount);
+        record.setFailCount(failCount);
+        record.setPushStatus(failCount == 0 ? 1 : (successCount == 0 ? 2 : 1));
+        record.setCompleteTime(LocalDateTime.now());
+        pushRecordMapper.updateById(record);
     }
 
     /**
@@ -336,6 +499,28 @@ public class PushController {
     }
 
     /**
+     * 获取推送类型文本
+     */
+    private String getPushTypeText(Integer pushType) {
+        if (pushType == null) return "未知";
+        switch (pushType) {
+            case 1: return "单台推送";
+            case 2: return "多台推送";
+            case 3: return "分组推送";
+            default: return "未知";
+        }
+    }
+
+    /**
+     * 获取状态文本
+     */
+    private String getStatusText(Integer status) {
+        if (status == null) return "未知";
+        PushStatusEnum statusEnum = PushStatusEnum.getByCode(status);
+        return statusEnum != null ? statusEnum.getDesc() : "未知";
+    }
+
+    /**
      * 转换为响应对象
      */
     private PushRecordResponse convertToResponse(PushRecord record) {
@@ -343,11 +528,20 @@ public class PushController {
         response.setId(record.getId());
         response.setContentType(record.getContentType() == 1 ? "poster" : "video");
         response.setContentTitle(record.getContentName());
+        response.setPushType(record.getPushType());
         response.setDeviceCount(record.getDeviceCount());
         response.setSuccessCount(record.getSuccessCount());
         response.setFailCount(record.getFailCount());
         response.setStatus(record.getPushStatus());
         response.setCreateTime(record.getPushTime());
+
+        // 获取分组名称
+        if (record.getGroupId() != null) {
+            DeviceGroup group = deviceGroupMapper.selectById(record.getGroupId());
+            if (group != null) {
+                response.setGroupName(group.getGroupName());
+            }
+        }
 
         // 获取设备名称
         if (record.getTargetIds() != null && !record.getTargetIds().isEmpty()) {
