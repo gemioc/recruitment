@@ -233,21 +233,36 @@ public class PushController {
     public Result<Long> pushMultiple(@RequestBody PushRequest request) {
         // 转换contentType: poster -> 1, video -> 2
         int contentTypeInt = "video".equals(request.getContentType()) ? 2 : 1;
-        Long contentId = request.getContentIds() != null && !request.getContentIds().isEmpty()
-            ? request.getContentIds().get(0) : request.getContentId();
 
-        // 获取内容名称
-        String contentName = null;
-        if (contentId != null) {
+        // 获取所有内容ID
+        List<Long> contentIds = request.getContentIds();
+        if (contentIds == null || contentIds.isEmpty()) {
+            // 兼容单个contentId的情况
+            if (request.getContentId() != null) {
+                contentIds = List.of(request.getContentId());
+            } else if (contentTypeInt == 1 && request.getPosterId() != null) {
+                contentIds = List.of(request.getPosterId());
+            } else if (contentTypeInt == 2 && request.getVideoId() != null) {
+                contentIds = List.of(request.getVideoId());
+            }
+        }
+
+        if (contentIds == null || contentIds.isEmpty()) {
+            return Result.error("请选择要推送的内容");
+        }
+
+        // 获取内容名称列表
+        List<String> contentNames = new ArrayList<>();
+        for (Long contentId : contentIds) {
             if (contentTypeInt == 1) {
                 Poster poster = posterMapper.selectById(contentId);
                 if (poster != null) {
-                    contentName = poster.getPosterName();
+                    contentNames.add(poster.getPosterName());
                 }
             } else {
                 Video video = videoMapper.selectById(contentId);
                 if (video != null) {
-                    contentName = video.getVideoName();
+                    contentNames.add(video.getVideoName());
                 }
             }
         }
@@ -261,8 +276,9 @@ public class PushController {
 
         PushRecord record = new PushRecord();
         record.setContentType(contentTypeInt);
-        record.setContentId(contentId);
-        record.setContentName(contentName);
+        // 存储第一个内容ID作为主键，所有内容ID存储在content_ids字段
+        record.setContentId(contentIds.get(0));
+        record.setContentName(String.join("、", contentNames));
         record.setPushType(determinePushType(request));
         record.setGroupId(request.getGroupId());
         record.setTargetIds(JSONUtil.toJsonStr(targetIds));
@@ -273,7 +289,8 @@ public class PushController {
         record.setPushBy(SecurityUtils.getCurrentUserId());
         pushRecordMapper.insert(record);
 
-        executePush(record, targetIds);
+        // 执行推送（支持多内容）
+        executePushMultiple(record, targetIds, contentIds, contentTypeInt);
 
         return Result.success(record.getId());
     }
@@ -458,6 +475,93 @@ public class PushController {
                     // 更新设备当前播放内容
                     device.setCurrentContentType(record.getContentType());
                     device.setCurrentContentId(record.getContentId());
+                    device.setPlayStatus(1);
+                    device.setContentStartTime(LocalDateTime.now());
+                    deviceMapper.updateById(device);
+
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("推送失败: deviceCode={}, error={}", device.getDeviceCode(), e.getMessage());
+                    failCount++;
+                }
+            } else {
+                log.warn("设备不在线: deviceCode={}", device.getDeviceCode());
+                failCount++;
+            }
+        }
+
+        // 更新推送记录状态
+        record.setSuccessCount(successCount);
+        record.setFailCount(failCount);
+        record.setPushStatus(failCount == 0 ? 1 : (successCount == 0 ? 2 : 1));
+        record.setCompleteTime(LocalDateTime.now());
+        pushRecordMapper.updateById(record);
+    }
+
+    /**
+     * 执行多内容推送（支持轮播）
+     */
+    private void executePushMultiple(PushRecord record, List<Long> targetIds, List<Long> contentIds, int contentTypeInt) {
+        if (targetIds == null || targetIds.isEmpty() || contentIds == null || contentIds.isEmpty()) {
+            return;
+        }
+
+        String contentType = contentTypeInt == 1 ? "poster" : "video";
+
+        // 获取所有内容URL
+        List<String> contentUrls = new ArrayList<>();
+        for (Long contentId : contentIds) {
+            String url = null;
+            if (contentTypeInt == 1) {
+                Poster poster = posterMapper.selectById(contentId);
+                if (poster != null) {
+                    url = poster.getFilePath();
+                }
+            } else {
+                Video video = videoMapper.selectById(contentId);
+                if (video != null) {
+                    url = video.getFilePath();
+                }
+            }
+
+            if (url != null) {
+                // 转换为文件访问路径：添加 /files 前缀
+                if (!url.startsWith("/files")) {
+                    url = "/files" + (url.startsWith("/") ? url : "/" + url);
+                }
+                contentUrls.add(url);
+            }
+        }
+
+        if (contentUrls.isEmpty()) {
+            log.warn("没有有效的内容可推送");
+            return;
+        }
+
+        // 推送到每个设备
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Long deviceId : targetIds) {
+            Device device = deviceMapper.selectById(deviceId);
+            if (device == null) {
+                failCount++;
+                continue;
+            }
+
+            if (webSocketHandler.isOnline(device.getDeviceCode())) {
+                try {
+                    // 使用新的多内容推送方法
+                    webSocketHandler.pushMultipleContents(
+                            device.getDeviceCode(),
+                            contentType,
+                            contentUrls,
+                            record.getPlayRule()
+                    );
+
+                    // 更新设备当前播放内容
+                    device.setCurrentContentType(contentTypeInt);
+                    device.setCurrentContentId(contentIds.get(0));
                     device.setPlayStatus(1);
                     device.setContentStartTime(LocalDateTime.now());
                     deviceMapper.updateById(device);

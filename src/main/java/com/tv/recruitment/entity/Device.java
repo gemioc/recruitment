@@ -100,4 +100,10 @@ public class Device extends BaseEntity {
      */
     @TableField(exist = false)
     private String groupName;
+
+    /**
+     * 当前播放内容名称（非数据库字段）
+     */
+    @TableField(exist = false)
+    private String currentContent;
 }

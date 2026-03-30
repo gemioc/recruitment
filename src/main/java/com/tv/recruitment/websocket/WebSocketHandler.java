@@ -3,6 +3,7 @@ package com.tv.recruitment.websocket;
 import cn.hutool.json.JSONObject;
 import cn.hutool.json.JSONUtil;
 import com.tv.recruitment.service.DeviceService;
+import com.tv.recruitment.service.PendingDeviceService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -12,6 +13,8 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 import java.io.IOException;
+import java.net.InetSocketAddress;
+import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -24,6 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class WebSocketHandler extends TextWebSocketHandler {
 
     private final DeviceService deviceService;
+    private final PendingDeviceService pendingDeviceService;
 
     /**
      * 存储所有连接的Session，key为设备编码
@@ -35,8 +39,23 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String deviceCode = getDeviceCode(session);
         if (deviceCode != null) {
             SESSION_MAP.put(deviceCode, session);
-            deviceService.updateOnlineStatus(deviceCode, true);
-            log.info("设备连接成功: {}", deviceCode);
+
+            // 检查设备是否已注册
+            if (pendingDeviceService.isRegistered(deviceCode)) {
+                // 已注册设备，更新在线状态
+                deviceService.updateOnlineStatus(deviceCode, true);
+                log.info("已注册设备连接成功: {}", deviceCode);
+            } else {
+                // 未注册设备，加入待注册列表
+                Map<String, Object> deviceInfo = new HashMap<>();
+                // 获取客户端IP
+                InetSocketAddress remoteAddress = session.getRemoteAddress();
+                if (remoteAddress != null) {
+                    deviceInfo.put("ip", remoteAddress.getAddress().getHostAddress());
+                }
+                pendingDeviceService.addPendingDevice(deviceCode, deviceInfo);
+                log.info("未注册设备连接成功，已加入待注册列表: {}", deviceCode);
+            }
         }
     }
 
@@ -59,7 +78,12 @@ public class WebSocketHandler extends TextWebSocketHandler {
         String deviceCode = getDeviceCode(session);
         if (deviceCode != null) {
             SESSION_MAP.remove(deviceCode);
-            deviceService.updateOnlineStatus(deviceCode, false);
+            // 从待注册列表移除
+            pendingDeviceService.removePendingDevice(deviceCode);
+            // 如果是已注册设备，更新离线状态
+            if (pendingDeviceService.isRegistered(deviceCode)) {
+                deviceService.updateOnlineStatus(deviceCode, false);
+            }
             log.info("设备断开连接: {}", deviceCode);
         }
     }
@@ -70,7 +94,10 @@ public class WebSocketHandler extends TextWebSocketHandler {
     private void handleHeartbeat(WebSocketSession session, JSONObject json) {
         String deviceCode = getDeviceCode(session);
         if (deviceCode != null) {
-            deviceService.updateOnlineStatus(deviceCode, true);
+            // 只有已注册设备才更新在线状态
+            if (pendingDeviceService.isRegistered(deviceCode)) {
+                deviceService.updateOnlineStatus(deviceCode, true);
+            }
         }
         // 响应心跳
         sendMessage(session, JSONUtil.createObj()
@@ -125,6 +152,46 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 .set("timestamp", System.currentTimeMillis())
                 .toString();
 
+        sendMessage(session, message);
+    }
+
+    /**
+     * 推送多个内容到设备（支持轮播）
+     * @param deviceCode 设备编码
+     * @param contentType 内容类型：poster/video
+     * @param contentUrls 内容URL列表
+     * @param playRule 播放规则JSON字符串，包含loop、duration等
+     */
+    public void pushMultipleContents(String deviceCode, String contentType, java.util.List<String> contentUrls, String playRule) {
+        WebSocketSession session = SESSION_MAP.get(deviceCode);
+        if (session == null || !session.isOpen()) {
+            log.warn("设备不在线: {}", deviceCode);
+            return;
+        }
+
+        // 构建contents数组，包含Android端需要的所有字段
+        cn.hutool.json.JSONArray contents = new cn.hutool.json.JSONArray();
+        for (int i = 0; i < contentUrls.size(); i++) {
+            String url = contentUrls.get(i);
+            contents.add(JSONUtil.createObj()
+                    .set("id", i)  // 使用索引作为临时ID
+                    .set("name", contentType + "_" + (i + 1))  // 生成临时名称
+                    .set("type", contentType)
+                    .set("url", url));
+        }
+
+        // 构建消息，使用Android端期望的格式
+        String message = JSONUtil.createObj()
+                .set("type", "PUSH_CONTENT")
+                .set("messageId", "msg_" + System.currentTimeMillis())
+                .set("data", JSONUtil.createObj()
+                        .set("contentType", contentType)
+                        .set("contents", contents)
+                        .set("rule", JSONUtil.parseObj(playRule)))
+                .set("timestamp", System.currentTimeMillis())
+                .toString();
+
+        log.info("推送多内容到设备 {}: {} 个内容", deviceCode, contentUrls.size());
         sendMessage(session, message);
     }
 

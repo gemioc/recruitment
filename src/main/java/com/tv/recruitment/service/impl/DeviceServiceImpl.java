@@ -6,17 +6,20 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.tv.recruitment.entity.Device;
 import com.tv.recruitment.entity.DeviceGroup;
+import com.tv.recruitment.entity.Poster;
+import com.tv.recruitment.entity.Video;
 import com.tv.recruitment.mapper.DeviceGroupMapper;
 import com.tv.recruitment.mapper.DeviceMapper;
+import com.tv.recruitment.mapper.PosterMapper;
+import com.tv.recruitment.mapper.VideoMapper;
 import com.tv.recruitment.service.DeviceService;
+import com.tv.recruitment.websocket.WebSocketHandler;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -26,9 +29,16 @@ import java.util.stream.Collectors;
 public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> implements DeviceService {
 
     private final DeviceGroupMapper deviceGroupMapper;
+    private final PosterMapper posterMapper;
+    private final VideoMapper videoMapper;
+    private final WebSocketHandler webSocketHandler;
 
-    public DeviceServiceImpl(DeviceGroupMapper deviceGroupMapper) {
+    public DeviceServiceImpl(DeviceGroupMapper deviceGroupMapper, PosterMapper posterMapper,
+                             VideoMapper videoMapper, @Lazy WebSocketHandler webSocketHandler) {
         this.deviceGroupMapper = deviceGroupMapper;
+        this.posterMapper = posterMapper;
+        this.videoMapper = videoMapper;
+        this.webSocketHandler = webSocketHandler;
     }
 
     @Override
@@ -59,26 +69,80 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
 
         Page<Device> result = page(new Page<>(pageNum, pageSize), wrapper);
 
-        // 设置分组名称
-        List<Device> devices = result.getRecords();
-        Set<Long> groupIds = devices.stream()
-                .map(Device::getGroupId)
-                .filter(id -> id != null)
-                .collect(Collectors.toSet());
-
-        if (!groupIds.isEmpty()) {
-            List<DeviceGroup> groups = deviceGroupMapper.selectBatchIds(groupIds);
-            Map<Long, String> groupNameMap = groups.stream()
-                    .collect(Collectors.toMap(DeviceGroup::getId, DeviceGroup::getGroupName));
-
-            devices.forEach(device -> {
-                if (device.getGroupId() != null) {
-                    device.setGroupName(groupNameMap.get(device.getGroupId()));
-                }
-            });
-        }
+        // 设置分组名称和当前播放内容名称
+        fillDeviceExtraInfo(result.getRecords());
 
         return result;
+    }
+
+    /**
+     * 填充设备额外信息（分组名称、当前播放内容名称）
+     */
+    private void fillDeviceExtraInfo(List<Device> devices) {
+        if (devices == null || devices.isEmpty()) {
+            return;
+        }
+
+        // 设置分组名称
+        Set<Long> groupIds = devices.stream()
+                .map(Device::getGroupId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+
+        Map<Long, String> groupNameMap = new HashMap<>();
+        if (!groupIds.isEmpty()) {
+            List<DeviceGroup> groups = deviceGroupMapper.selectBatchIds(groupIds);
+            groupNameMap = groups.stream()
+                    .collect(Collectors.toMap(DeviceGroup::getId, DeviceGroup::getGroupName));
+        }
+
+        // 收集所有需要查询的内容ID
+        Set<Long> posterIds = new HashSet<>();
+        Set<Long> videoIds = new HashSet<>();
+        for (Device device : devices) {
+            if (device.getCurrentContentId() != null && device.getCurrentContentType() != null) {
+                if (device.getCurrentContentType() == 1) {
+                    posterIds.add(device.getCurrentContentId());
+                } else if (device.getCurrentContentType() == 2) {
+                    videoIds.add(device.getCurrentContentId());
+                }
+            }
+        }
+
+        // 批量查询内容名称
+        Map<Long, String> posterNameMap = new HashMap<>();
+        Map<Long, String> videoNameMap = new HashMap<>();
+
+        if (!posterIds.isEmpty()) {
+            List<Poster> posters = posterMapper.selectBatchIds(posterIds);
+            posterNameMap = posters.stream()
+                    .collect(Collectors.toMap(Poster::getId, Poster::getPosterName));
+        }
+
+        if (!videoIds.isEmpty()) {
+            List<Video> videos = videoMapper.selectBatchIds(videoIds);
+            videoNameMap = videos.stream()
+                    .collect(Collectors.toMap(Video::getId, Video::getVideoName));
+        }
+
+        // 设置设备的额外字段
+        for (Device device : devices) {
+            // 设置分组名称
+            if (device.getGroupId() != null) {
+                device.setGroupName(groupNameMap.get(device.getGroupId()));
+            }
+
+            // 设置当前播放内容名称
+            if (device.getCurrentContentId() != null && device.getCurrentContentType() != null) {
+                String contentName = null;
+                if (device.getCurrentContentType() == 1) {
+                    contentName = posterNameMap.get(device.getCurrentContentId());
+                } else if (device.getCurrentContentType() == 2) {
+                    contentName = videoNameMap.get(device.getCurrentContentId());
+                }
+                device.setCurrentContent(contentName);
+            }
+        }
     }
 
     @Override
@@ -211,8 +275,22 @@ public class DeviceServiceImpl extends ServiceImpl<DeviceMapper, Device> impleme
 
     @Override
     public void restartDevice(Long id) {
-        // TODO: 通过WebSocket发送重启指令到电视终端
-        // Device device = getById(id);
-        // webSocketHandler.sendControl(device.getDeviceCode(), "restart");
+        Device device = getById(id);
+        if (device == null) {
+            throw new RuntimeException("设备不存在");
+        }
+        // 通过WebSocket发送重启指令到电视终端
+        webSocketHandler.sendControl(device.getDeviceCode(), "restart");
+    }
+
+    @Override
+    public Device getDetailById(Long id) {
+        Device device = getById(id);
+        if (device == null) {
+            return null;
+        }
+        // 填充额外信息
+        fillDeviceExtraInfo(List.of(device));
+        return device;
     }
 }

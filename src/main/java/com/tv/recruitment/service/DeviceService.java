@@ -46,4 +46,9 @@ public interface DeviceService extends IService<Device> {
      * 重启设备
      */
     void restartDevice(Long id);
+
+    /**
+     * 获取设备详情（包含内容名称）
+     */
+    Device getDetailById(Long id);
 }

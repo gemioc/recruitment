@@ -4,6 +4,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.entity.Device;
 import com.tv.recruitment.service.DeviceService;
+import com.tv.recruitment.service.PendingDeviceService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ import java.util.Map;
 public class DeviceController {
 
     private final DeviceService deviceService;
+    private final PendingDeviceService pendingDeviceService;
 
     @Operation(summary = "分页查询设备")
     @GetMapping
@@ -39,13 +41,17 @@ public class DeviceController {
     @Operation(summary = "获取设备详情")
     @GetMapping("/{id}")
     public Result<Device> getById(@PathVariable Long id) {
-        return Result.success(deviceService.getById(id));
+        return Result.success(deviceService.getDetailById(id));
     }
 
     @Operation(summary = "新增设备")
     @PostMapping
     public Result<Void> save(@RequestBody Device device) {
         deviceService.save(device);
+        // 设备注册成功，从待注册列表移除
+        if (device.getDeviceCode() != null) {
+            pendingDeviceService.removePendingDevice(device.getDeviceCode());
+        }
         return Result.success();
     }
 
