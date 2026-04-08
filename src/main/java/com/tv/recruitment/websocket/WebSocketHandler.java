@@ -174,8 +174,8 @@ public class WebSocketHandler extends TextWebSocketHandler {
         for (int i = 0; i < contentUrls.size(); i++) {
             String url = contentUrls.get(i);
             contents.add(JSONUtil.createObj()
-                    .set("id", i)  // 使用索引作为临时ID
-                    .set("name", contentType + "_" + (i + 1))  // 生成临时名称
+                    .set("id", i)
+                    .set("name", contentType + "_" + (i + 1))
                     .set("type", contentType)
                     .set("url", url));
         }
@@ -187,11 +187,11 @@ public class WebSocketHandler extends TextWebSocketHandler {
                 .set("data", JSONUtil.createObj()
                         .set("contentType", contentType)
                         .set("contents", contents)
-                        .set("rule", JSONUtil.parseObj(playRule)))
+                        .set("playRule", JSONUtil.parseObj(playRule)))
                 .set("timestamp", System.currentTimeMillis())
                 .toString();
 
-        log.info("推送多内容到设备 {}: {} 个内容", deviceCode, contentUrls.size());
+        log.info("推送多内容到设备 {}: {} 个内容, playRule: {}", deviceCode, contentUrls.size(), playRule);
         sendMessage(session, message);
     }
 

@@ -7,13 +7,19 @@ import com.tv.recruitment.entity.Job;
 import com.tv.recruitment.service.JobService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 
 /**
  * 职位控制器
+ *
+ * @author tv_recru
  */
 @Tag(name = "职位管理")
 @RestController
@@ -79,5 +85,26 @@ public class JobController {
     public Result<Void> batchUpdateStatus(@RequestBody List<Long> ids, @RequestParam Integer status) {
         jobService.batchUpdateStatus(ids, status);
         return Result.success();
+    }
+
+    @Operation(summary = "下载职位导入模板")
+    @GetMapping("/template")
+    public void downloadTemplate(HttpServletResponse response) throws IOException {
+        jobService.downloadTemplate(response);
+    }
+
+    @Operation(summary = "批量导入职位")
+    @PostMapping("/import")
+    @Log(type = "CREATE", desc = "批量导入职位")
+    public Result<Map<String, Object>> importJobs(@RequestParam("file") MultipartFile file) throws IOException {
+        // 参数校验
+        if (file.isEmpty()) {
+            return Result.error("请选择要导入的文件");
+        }
+        String originalFilename = file.getOriginalFilename();
+        if (originalFilename == null || (!originalFilename.endsWith(".xlsx") && !originalFilename.endsWith(".xls"))) {
+            return Result.error("请上传 Excel 文件(.xlsx 或 .xls)");
+        }
+        return Result.success(jobService.importJobs(file));
     }
 }

@@ -13,15 +13,21 @@ import com.tv.recruitment.mapper.UserMapper;
 import com.tv.recruitment.security.UserPrincipal;
 import com.tv.recruitment.service.AuthService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.Base64;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * 认证服务实现
+ *
+ * @author tv_recru
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
@@ -97,6 +103,8 @@ public class AuthServiceImpl implements AuthService {
         userInfo.setRealName(user.getRealName());
         userInfo.setRole(user.getRole());
         userInfo.setRoleName(user.getRole() == 1 ? "管理员" : "运营人员");
+        userInfo.setCreateTime(user.getCreateTime());
+        userInfo.setLastLoginTime(user.getLastLoginTime());
 
         return userInfo;
     }
@@ -147,5 +155,28 @@ public class AuthServiceImpl implements AuthService {
         updateUser.setId(user.getId());
         updateUser.setPassword(encodedPassword);
         userMapper.updateById(updateUser);
+    }
+
+    @Override
+    public Map<String, Object> encodePassword(String password) {
+        log.info("生成密码哈希, 原始密码长度: {}", password != null ? password.length() : 0);
+        Map<String, Object> result = new HashMap<>();
+        result.put("rawPassword", password);
+        result.put("encodedPassword", passwordEncoder.encode(password));
+        return result;
+    }
+
+    @Override
+    public Map<String, Object> resetAdminPassword() {
+        log.info("重置admin密码");
+        String rawPassword = "admin123";
+        String encodedPassword = passwordEncoder.encode(rawPassword);
+
+        updateAdminPassword(encodedPassword);
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("rawPassword", rawPassword);
+        result.put("encodedPassword", encodedPassword);
+        return result;
     }
 }

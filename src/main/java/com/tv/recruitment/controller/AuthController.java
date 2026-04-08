@@ -10,14 +10,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /**
  * 认证控制器
+ *
+ * @author tv_recru
  */
 @Tag(name = "认证管理")
 @RestController
@@ -26,7 +26,6 @@ import java.util.Map;
 public class AuthController {
 
     private final AuthService authService;
-    private final PasswordEncoder passwordEncoder;
 
     @Operation(summary = "用户登录")
     @PostMapping("/login")
@@ -60,23 +59,12 @@ public class AuthController {
     @Operation(summary = "生成密码哈希(测试用)")
     @GetMapping("/encodePassword")
     public Result<Map<String, Object>> encodePassword(@RequestParam String password) {
-        Map<String, Object> result = new HashMap<>();
-        result.put("rawPassword", password);
-        result.put("encodedPassword", passwordEncoder.encode(password));
-        return Result.success(result);
+        return Result.success(authService.encodePassword(password));
     }
 
     @Operation(summary = "重置admin密码")
     @PostMapping("/resetAdmin")
     public Result<Map<String, Object>> resetAdmin() {
-        String rawPassword = "admin123";
-        String encodedPassword = passwordEncoder.encode(rawPassword);
-
-        authService.updateAdminPassword(encodedPassword);
-
-        Map<String, Object> result = new HashMap<>();
-        result.put("rawPassword", rawPassword);
-        result.put("encodedPassword", encodedPassword);
-        return Result.success(result);
+        return Result.success(authService.resetAdminPassword());
     }
 }

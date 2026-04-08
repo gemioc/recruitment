@@ -41,7 +41,7 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final UserMapper userMapper;
 
     @Override
-    @Cacheable(value = "statistics", key = "'push:' + #type + ':' + #deviceId + ':' + #contentType + ':' + #pushStatus")
+    @Cacheable(value = "statistics", key = "'push:' + #type + ':' + #deviceId + ':' + #contentType + ':' + #pushStatus + ':' + #startDate + ':' + #endDate")
     public Map<String, Object> getPushStatistics(String startDate, String endDate, String type,
                                                  Long deviceId, Integer contentType, Integer pushStatus) {
         Map<String, Object> result = new HashMap<>();
@@ -865,11 +865,13 @@ public class StatisticsServiceImpl implements StatisticsService {
             if (dbData != null) {
                 dayData.put("total", ((Number) dbData.get("total")).intValue());
                 dayData.put("success", ((Number) dbData.get("success")).intValue());
+                dayData.put("fail", ((Number) dbData.get("fail")).intValue());
                 dayData.put("posterCount", ((Number) dbData.get("posterCount")).intValue());
                 dayData.put("videoCount", ((Number) dbData.get("videoCount")).intValue());
             } else {
                 dayData.put("total", 0);
                 dayData.put("success", 0);
+                dayData.put("fail", 0);
                 dayData.put("posterCount", 0);
                 dayData.put("videoCount", 0);
             }

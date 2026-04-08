@@ -55,6 +55,7 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
             DATE(push_time) as date,
             COUNT(*) as total,
             SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success,
+            SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail,
             SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount,
             SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount
         FROM t_push_record

@@ -1,5 +1,7 @@
 package com.tv.recruitment.entity;
 
+import com.alibaba.excel.annotation.ExcelIgnore;
+import com.alibaba.excel.annotation.ExcelProperty;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableName;
@@ -17,100 +19,62 @@ import java.time.LocalDate;
 @TableName("t_job")
 public class Job extends BaseEntity {
 
-    /**
-     * 职位名称
-     */
+    @ExcelProperty("职位名称*")
     private String jobName;
 
-    /**
-     * 公司名称
-     */
+    @ExcelProperty("公司名称*")
     private String company;
 
-    /**
-     * 薪资下限
-     */
+    @ExcelProperty("薪资下限*")
     private Integer salaryMin;
 
-    /**
-     * 薪资上限
-     */
+    @ExcelProperty("薪资上限*")
     private Integer salaryMax;
 
-    /**
-     * 工作地址
-     */
+    @ExcelProperty("工作地点*")
     private String workAddress;
 
-    /**
-     * 学历要求
-     */
+    @ExcelProperty("学历要求")
     private String education;
 
-    /**
-     * 经验要求
-     */
+    @ExcelProperty("工作经验")
     private String experience;
 
-    /**
-     * 任职要求
-     */
-    private String requirements;
-
-    /**
-     * 招聘人数
-     */
+    @ExcelProperty("招聘人数")
     private Integer recruitCount;
 
-    /**
-     * 岗位职责
-     */
-    private String responsibilities;
-
-    /**
-     * 公司福利
-     */
-    private String welfare;
-
-    /**
-     * 联系人
-     */
+    @ExcelProperty("联系人")
     private String contactName;
 
-    /**
-     * 联系电话
-     */
+    @ExcelProperty("联系电话*")
     private String contactPhone;
 
-    /**
-     * 联系邮箱
-     */
+    @ExcelProperty("联系邮箱")
     private String contactEmail;
 
-    /**
-     * 联系微信
-     */
+    @ExcelProperty("岗位职责")
+    private String responsibilities;
+
+    @ExcelProperty("任职要求")
+    private String requirements;
+
+    @ExcelProperty("福利待遇")
+    private String welfare;
+
+    @ExcelIgnore
     private String contactWechat;
 
-    /**
-     * 截止日期
-     */
+    @ExcelIgnore
     private LocalDate deadline;
 
-    /**
-     * 状态: 1-招聘中 2-已截止
-     */
+    @ExcelIgnore
     private Integer status;
 
-    /**
-     * 创建人ID
-     */
+    @ExcelIgnore
     @TableField(fill = FieldFill.INSERT)
     private Long createBy;
 
-    /**
-     * 更新人ID
-     */
+    @ExcelIgnore
     @TableField(fill = FieldFill.UPDATE)
     private Long updateBy;
 }

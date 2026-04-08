@@ -2,6 +2,8 @@ package com.tv.recruitment.dto.response;
 
 import lombok.Data;
 
+import java.time.LocalDateTime;
+
 /**
  * 用户信息响应
  */
@@ -31,4 +33,14 @@ public class UserInfoResponse {
      * 角色名称
      */
     private String roleName;
+
+    /**
+     * 注册时间
+     */
+    private LocalDateTime createTime;
+
+    /**
+     * 最后登录时间
+     */
+    private LocalDateTime lastLoginTime;
 }
