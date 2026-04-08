@@ -11,8 +11,15 @@ public interface StatisticsService {
 
     /**
      * 获取推送统计概览
+     * @param startDate 开始日期
+     * @param endDate 结束日期
+     * @param type 类型：day/week/month/all
+     * @param deviceId 设备ID（可选）
+     * @param contentType 内容类型：1-海报 2-视频（可选）
+     * @param pushStatus 推送状态：0-推送中 1-成功 2-失败（可选）
      */
-    Map<String, Object> getPushStatistics(String startDate, String endDate, String type);
+    Map<String, Object> getPushStatistics(String startDate, String endDate, String type,
+            Long deviceId, Integer contentType, Integer pushStatus);
 
     /**
      * 获取推送记录明细列表

@@ -27,8 +27,11 @@ public class StatisticsController {
     public Result<Map<String, Object>> getPushStatistics(
             @RequestParam(required = false) String startDate,
             @RequestParam(required = false) String endDate,
-            @RequestParam(defaultValue = "week") String type) {
-        return Result.success(statisticsService.getPushStatistics(startDate, endDate, type));
+            @RequestParam(defaultValue = "week") String type,
+            @RequestParam(required = false) Long deviceId,
+            @RequestParam(required = false) Integer contentType,
+            @RequestParam(required = false) Integer pushStatus) {
+        return Result.success(statisticsService.getPushStatistics(startDate, endDate, type, deviceId, contentType, pushStatus));
     }
 
     @Operation(summary = "获取推送记录明细列表")

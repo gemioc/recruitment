@@ -41,8 +41,9 @@ public class StatisticsServiceImpl implements StatisticsService {
     private final UserMapper userMapper;
 
     @Override
-    @Cacheable(value = "statistics", key = "'push:' + #type")
-    public Map<String, Object> getPushStatistics(String startDate, String endDate, String type) {
+    @Cacheable(value = "statistics", key = "'push:' + #type + ':' + #deviceId + ':' + #contentType + ':' + #pushStatus")
+    public Map<String, Object> getPushStatistics(String startDate, String endDate, String type,
+                                                 Long deviceId, Integer contentType, Integer pushStatus) {
         Map<String, Object> result = new HashMap<>();
 
         // 计算时间范围
@@ -56,8 +57,14 @@ public class StatisticsServiceImpl implements StatisticsService {
             end = LocalDate.parse(endDate).atTime(23, 59, 59);
         }
 
-        // 使用聚合查询一次性获取所有统计数据
-        Map<String, Object> summary = pushRecordMapper.selectPushSummary(start, end);
+        // 使用聚合查询获取统计数据
+        Map<String, Object> summary;
+        if (deviceId != null || contentType != null || pushStatus != null) {
+            String deviceIdStr = deviceId != null ? String.valueOf(deviceId) : null;
+            summary = pushRecordMapper.selectPushSummaryWithFilters(start, end, deviceId, deviceIdStr, contentType, pushStatus);
+        } else {
+            summary = pushRecordMapper.selectPushSummary(start, end);
+        }
 
         // 处理可能为null的结果
         Object totalObj = summary.get("total");
@@ -120,7 +127,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public Page<Map<String, Object>> getPushRecordList(Integer pageNum, Integer pageSize,
-            String startDate, String endDate, Long deviceId, Integer contentType, Integer pushStatus) {
+                                                       String startDate, String endDate, Long deviceId, Integer contentType, Integer pushStatus) {
 
         // 构建查询条件
         LambdaQueryWrapper<PushRecord> wrapper = new LambdaQueryWrapper<>();
@@ -382,7 +389,7 @@ public class StatisticsServiceImpl implements StatisticsService {
 
     @Override
     public void exportPushRecords(String startDate, String endDate, Long deviceId,
-            Integer contentType, Integer pushStatus, HttpServletResponse response) {
+                                  Integer contentType, Integer pushStatus, HttpServletResponse response) {
         try {
             // 设置Excel响应头
             String fileName = "推送记录_" + LocalDate.now().format(DateTimeFormatter.ofPattern("yyyyMMdd"));
@@ -412,28 +419,50 @@ public class StatisticsServiceImpl implements StatisticsService {
             try (Workbook workbook = new XSSFWorkbook()) {
                 Sheet sheet = workbook.createSheet("推送记录");
 
-                // 创建标题样式
+                // 创建表头样式
                 CellStyle headerStyle = workbook.createCellStyle();
                 headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
                 headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
                 headerStyle.setAlignment(HorizontalAlignment.CENTER);
+                headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+                headerStyle.setBorderTop(BorderStyle.THIN);
+                headerStyle.setBorderBottom(BorderStyle.THIN);
+                headerStyle.setBorderLeft(BorderStyle.THIN);
+                headerStyle.setBorderRight(BorderStyle.THIN);
                 Font headerFont = workbook.createFont();
                 headerFont.setBold(true);
                 headerStyle.setFont(headerFont);
 
+                // 创建数据样式
+                CellStyle dataStyle = workbook.createCellStyle();
+                dataStyle.setAlignment(HorizontalAlignment.CENTER);
+                dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+                dataStyle.setBorderTop(BorderStyle.THIN);
+                dataStyle.setBorderBottom(BorderStyle.THIN);
+                dataStyle.setBorderLeft(BorderStyle.THIN);
+                dataStyle.setBorderRight(BorderStyle.THIN);
+
                 // 创建表头
                 String[] headers = {"ID", "推送时间", "内容类型", "内容名称", "推送对象", "设备数量", "成功数", "失败数", "推送状态", "操作人"};
+                // 参考文件列宽（Excel单位）：A=13, B=27, C=14, D=33, E=23, F=17, G=15, H=15, I=17, J=15
+                int[] colWidths = {13, 27, 14, 33, 23, 17, 15, 15, 17, 15};
                 Row headerRow = sheet.createRow(0);
+                headerRow.setHeight((short) 375); // 约27.5pt
                 for (int i = 0; i < headers.length; i++) {
                     Cell cell = headerRow.createCell(i);
                     cell.setCellValue(headers[i]);
                     cell.setCellStyle(headerStyle);
+                    sheet.setColumnWidth(i, colWidths[i] * 256);
                 }
 
                 // 创建日期样式
                 CellStyle dateStyle = workbook.createCellStyle();
                 CreationHelper createHelper = workbook.getCreationHelper();
                 dateStyle.setDataFormat(createHelper.createDataFormat().getFormat("yyyy-MM-dd HH:mm:ss"));
+                dateStyle.setBorderTop(BorderStyle.THIN);
+                dateStyle.setBorderBottom(BorderStyle.THIN);
+                dateStyle.setBorderLeft(BorderStyle.THIN);
+                dateStyle.setBorderRight(BorderStyle.THIN);
 
                 DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
@@ -455,15 +484,25 @@ public class StatisticsServiceImpl implements StatisticsService {
                     }
 
                     Row row = sheet.createRow(rowNum++);
+                    row.setHeight((short) 375); // 约27.5pt
 
-                    row.createCell(0).setCellValue(record.getId());
-                    row.createCell(1).setCellValue(record.getPushTime() != null ? record.getPushTime().format(formatter) : "");
+                    Cell cell0 = row.createCell(0);
+                    cell0.setCellValue(record.getId());
+                    cell0.setCellStyle(dataStyle);
+
+                    Cell cell1 = row.createCell(1);
+                    cell1.setCellValue(record.getPushTime() != null ? record.getPushTime().format(formatter) : "");
+                    cell1.setCellStyle(dataStyle);
 
                     // 内容类型
                     String contentTypeText = record.getContentType() == 1 ? "海报" : "视频";
-                    row.createCell(2).setCellValue(contentTypeText);
+                    Cell cell2 = row.createCell(2);
+                    cell2.setCellValue(contentTypeText);
+                    cell2.setCellStyle(dataStyle);
 
-                    row.createCell(3).setCellValue(record.getContentName() != null ? record.getContentName() : "");
+                    Cell cell3 = row.createCell(3);
+                    cell3.setCellValue(record.getContentName() != null ? record.getContentName() : "");
+                    cell3.setCellStyle(dataStyle);
 
                     // 推送对象
                     String targetDevices = "";
@@ -483,12 +522,25 @@ public class StatisticsServiceImpl implements StatisticsService {
                             // ignore
                         }
                     }
-                    row.createCell(4).setCellValue(targetDevices);
+                    Cell cell4 = row.createCell(4);
+                    cell4.setCellValue(targetDevices);
+                    cell4.setCellStyle(dataStyle);
 
-                    row.createCell(5).setCellValue(record.getDeviceCount() != null ? record.getDeviceCount() : 0);
-                    row.createCell(6).setCellValue(record.getSuccessCount() != null ? record.getSuccessCount() : 0);
-                    row.createCell(7).setCellValue(record.getFailCount() != null ? record.getFailCount() : 0);
-                    row.createCell(8).setCellValue(getPushStatusText(record.getPushStatus()));
+                    Cell cell5 = row.createCell(5);
+                    cell5.setCellValue(record.getDeviceCount() != null ? record.getDeviceCount() : 0);
+                    cell5.setCellStyle(dataStyle);
+
+                    Cell cell6 = row.createCell(6);
+                    cell6.setCellValue(record.getSuccessCount() != null ? record.getSuccessCount() : 0);
+                    cell6.setCellStyle(dataStyle);
+
+                    Cell cell7 = row.createCell(7);
+                    cell7.setCellValue(record.getFailCount() != null ? record.getFailCount() : 0);
+                    cell7.setCellStyle(dataStyle);
+
+                    Cell cell8 = row.createCell(8);
+                    cell8.setCellValue(getPushStatusText(record.getPushStatus()));
+                    cell8.setCellStyle(dataStyle);
 
                     // 操作人
                     String operatorName = "";
@@ -500,12 +552,9 @@ public class StatisticsServiceImpl implements StatisticsService {
                         operatorName = userCache.containsKey(record.getPushBy()) ?
                                 userCache.get(record.getPushBy()).getRealName() : "";
                     }
-                    row.createCell(9).setCellValue(operatorName);
-                }
-
-                // 自动调整列宽
-                for (int i = 0; i < headers.length; i++) {
-                    sheet.autoSizeColumn(i);
+                    Cell cell9 = row.createCell(9);
+                    cell9.setCellValue(operatorName);
+                    cell9.setCellStyle(dataStyle);
                 }
 
                 // 写入响应
@@ -533,26 +582,40 @@ public class StatisticsServiceImpl implements StatisticsService {
                     LocalDate.parse(endDate).atTime(23, 59, 59) : LocalDateTime.now();
 
             try (Workbook workbook = new XSSFWorkbook()) {
-                // 创建样式
+                // 创建表头样式
                 CellStyle headerStyle = workbook.createCellStyle();
                 headerStyle.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
                 headerStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
                 headerStyle.setAlignment(HorizontalAlignment.CENTER);
+                headerStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+                headerStyle.setBorderTop(BorderStyle.THIN);
+                headerStyle.setBorderBottom(BorderStyle.THIN);
+                headerStyle.setBorderLeft(BorderStyle.THIN);
+                headerStyle.setBorderRight(BorderStyle.THIN);
                 Font headerFont = workbook.createFont();
                 headerFont.setBold(true);
                 headerStyle.setFont(headerFont);
 
+                // 创建数据样式
+                CellStyle dataStyle = workbook.createCellStyle();
+                dataStyle.setAlignment(HorizontalAlignment.CENTER);
+                dataStyle.setVerticalAlignment(VerticalAlignment.CENTER);
+                dataStyle.setBorderTop(BorderStyle.THIN);
+                dataStyle.setBorderBottom(BorderStyle.THIN);
+                dataStyle.setBorderLeft(BorderStyle.THIN);
+                dataStyle.setBorderRight(BorderStyle.THIN);
+
                 // Sheet1: 概览统计
                 Sheet overviewSheet = workbook.createSheet("概览统计");
-                createOverviewSheet(overviewSheet, headerStyle, start, end);
+                createOverviewSheet(overviewSheet, headerStyle, dataStyle, start, end);
 
                 // Sheet2: 推送趋势
                 Sheet trendSheet = workbook.createSheet("推送趋势");
-                createTrendSheet(trendSheet, headerStyle, start, end);
+                createTrendSheet(trendSheet, headerStyle, dataStyle, start, end);
 
                 // Sheet3: 设备排行
                 Sheet rankSheet = workbook.createSheet("设备排行");
-                createDeviceRankSheet(rankSheet, headerStyle, start, end);
+                createDeviceRankSheet(rankSheet, headerStyle, dataStyle, start, end);
 
                 // 写入响应
                 OutputStream out = response.getOutputStream();
@@ -565,102 +628,188 @@ public class StatisticsServiceImpl implements StatisticsService {
         }
     }
 
-    private void createOverviewSheet(Sheet sheet, CellStyle headerStyle, LocalDateTime start, LocalDateTime end) {
+    private void createOverviewSheet(Sheet sheet, CellStyle headerStyle, CellStyle dataStyle, LocalDateTime start, LocalDateTime end) {
         Row titleRow = sheet.createRow(0);
-        titleRow.createCell(0).setCellValue("统计报表");
+        titleRow.setHeight((short) 500);
+        Cell titleCell = titleRow.createCell(0);
+        titleCell.setCellValue("统计报表");
+        Font titleFont = sheet.getWorkbook().createFont();
+        titleFont.setBold(true);
+        titleFont.setFontHeightInPoints((short) 16);
+        titleCell.setCellStyle(headerStyle);
         sheet.addMergedRegion(new CellRangeAddress(0, 0, 0, 3));
 
         Row timeRow = sheet.createRow(1);
-        timeRow.createCell(0).setCellValue("统计时间：" + start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) +
+        timeRow.setHeight((short) 375);
+        Cell timeCell = timeRow.createCell(0);
+        timeCell.setCellValue("统计时间：" + start.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) +
                 " 至 " + end.format(DateTimeFormatter.ofPattern("yyyy-MM-dd")));
         sheet.addMergedRegion(new CellRangeAddress(1, 1, 0, 3));
 
         int rowNum = 3;
 
-        // 推送统计 - 使用聚合查询
+        // 推送统计
         Row pushHeaderRow = sheet.createRow(rowNum++);
-        pushHeaderRow.createCell(0).setCellValue("推送统计");
+        pushHeaderRow.setHeight((short) 375);
+        Cell pushHeaderCell = pushHeaderRow.createCell(0);
+        pushHeaderCell.setCellValue("推送统计");
+        pushHeaderCell.setCellStyle(headerStyle);
         sheet.addMergedRegion(new CellRangeAddress(rowNum - 1, rowNum - 1, 0, 1));
 
         Map<String, Object> summary = pushRecordMapper.selectPushSummary(start, end);
         Long totalPush = ((Number) summary.get("total")).longValue();
         Long successPush = ((Number) summary.get("success")).longValue();
 
-        sheet.createRow(rowNum++).createCell(0).setCellValue("推送总次数：" + totalPush);
-        sheet.createRow(rowNum++).createCell(0).setCellValue("推送成功：" + successPush);
-        sheet.createRow(rowNum++).createCell(0).setCellValue("推送失败：" + (totalPush - successPush));
-        sheet.createRow(rowNum++).createCell(0).setCellValue("成功率：" + (totalPush > 0 ? Math.round(successPush * 100.0 / totalPush) : 0) + "%");
+        Row row1 = sheet.createRow(rowNum++);
+        row1.setHeight((short) 375);
+        row1.createCell(0).setCellValue("推送总次数：" + totalPush);
+        row1.getCell(0).setCellStyle(dataStyle);
+
+        Row row2 = sheet.createRow(rowNum++);
+        row2.setHeight((short) 375);
+        row2.createCell(0).setCellValue("推送成功：" + successPush);
+        row2.getCell(0).setCellStyle(dataStyle);
+
+        Row row3 = sheet.createRow(rowNum++);
+        row3.setHeight((short) 375);
+        row3.createCell(0).setCellValue("推送失败：" + (totalPush - successPush));
+        row3.getCell(0).setCellStyle(dataStyle);
+
+        Row row4 = sheet.createRow(rowNum++);
+        row4.setHeight((short) 375);
+        row4.createCell(0).setCellValue("成功率：" + (totalPush > 0 ? Math.round(successPush * 100.0 / totalPush) : 0) + "%");
+        row4.getCell(0).setCellStyle(dataStyle);
 
         rowNum++;
 
         // 设备统计
-        sheet.createRow(rowNum++).createCell(0).setCellValue("设备统计");
+        Row deviceHeaderRow = sheet.createRow(rowNum++);
+        deviceHeaderRow.setHeight((short) 375);
+        Cell deviceHeaderCell = deviceHeaderRow.createCell(0);
+        deviceHeaderCell.setCellValue("设备统计");
+        deviceHeaderCell.setCellStyle(headerStyle);
+        sheet.addMergedRegion(new CellRangeAddress(rowNum - 1, rowNum - 1, 0, 1));
+
         Long totalDevices = deviceMapper.selectCount(null);
         Long onlineDevices = deviceMapper.selectCount(
                 new LambdaQueryWrapper<Device>().eq(Device::getOnlineStatus, 1)
         );
-        sheet.createRow(rowNum++).createCell(0).setCellValue("设备总数：" + totalDevices);
-        sheet.createRow(rowNum++).createCell(0).setCellValue("在线设备：" + onlineDevices);
-        sheet.createRow(rowNum++).createCell(0).setCellValue("离线设备：" + (totalDevices - onlineDevices));
+
+        Row dRow1 = sheet.createRow(rowNum++);
+        dRow1.setHeight((short) 375);
+        dRow1.createCell(0).setCellValue("设备总数：" + totalDevices);
+        dRow1.getCell(0).setCellStyle(dataStyle);
+
+        Row dRow2 = sheet.createRow(rowNum++);
+        dRow2.setHeight((short) 375);
+        dRow2.createCell(0).setCellValue("在线设备：" + onlineDevices);
+        dRow2.getCell(0).setCellStyle(dataStyle);
+
+        Row dRow3 = sheet.createRow(rowNum++);
+        dRow3.setHeight((short) 375);
+        dRow3.createCell(0).setCellValue("离线设备：" + (totalDevices - onlineDevices));
+        dRow3.getCell(0).setCellStyle(dataStyle);
 
         rowNum++;
 
         // 内容统计
-        sheet.createRow(rowNum++).createCell(0).setCellValue("内容统计");
-        sheet.createRow(rowNum++).createCell(0).setCellValue("职位数量：" + jobMapper.selectCount(null));
-        sheet.createRow(rowNum++).createCell(0).setCellValue("海报数量：" + posterMapper.selectCount(null));
-        sheet.createRow(rowNum++).createCell(0).setCellValue("视频数量：" + videoMapper.selectCount(null));
+        Row contentHeaderRow = sheet.createRow(rowNum++);
+        contentHeaderRow.setHeight((short) 375);
+        Cell contentHeaderCell = contentHeaderRow.createCell(0);
+        contentHeaderCell.setCellValue("内容统计");
+        contentHeaderCell.setCellStyle(headerStyle);
 
-        sheet.autoSizeColumn(0);
-        sheet.autoSizeColumn(1);
+        Row cRow1 = sheet.createRow(rowNum++);
+        cRow1.setHeight((short) 375);
+        cRow1.createCell(0).setCellValue("职位数量：" + jobMapper.selectCount(null));
+        cRow1.getCell(0).setCellStyle(dataStyle);
+
+        Row cRow2 = sheet.createRow(rowNum++);
+        cRow2.setHeight((short) 375);
+        cRow2.createCell(0).setCellValue("海报数量：" + posterMapper.selectCount(null));
+        cRow2.getCell(0).setCellStyle(dataStyle);
+
+        Row cRow3 = sheet.createRow(rowNum++);
+        cRow3.setHeight((short) 375);
+        cRow3.createCell(0).setCellValue("视频数量：" + videoMapper.selectCount(null));
+        cRow3.getCell(0).setCellStyle(dataStyle);
+
+        sheet.setColumnWidth(0, 20 * 256);
+        sheet.setColumnWidth(1, 15 * 256);
+        sheet.setColumnWidth(2, 15 * 256);
+        sheet.setColumnWidth(3, 15 * 256);
     }
 
-    private void createTrendSheet(Sheet sheet, CellStyle headerStyle, LocalDateTime start, LocalDateTime end) {
+    private void createTrendSheet(Sheet sheet, CellStyle headerStyle, CellStyle dataStyle, LocalDateTime start, LocalDateTime end) {
         String[] headers = {"日期", "推送次数", "海报推送", "视频推送", "成功次数"};
+        int[] colWidths = {12, 12, 12, 12, 12};
         Row headerRow = sheet.createRow(0);
+        headerRow.setHeight((short) 375);
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, colWidths[i] * 256);
         }
 
         List<Map<String, Object>> trend = generateTrendDataOptimized(start, end);
         int rowNum = 1;
         for (Map<String, Object> day : trend) {
             Row row = sheet.createRow(rowNum++);
-            row.createCell(0).setCellValue((String) day.get("date"));
-            row.createCell(1).setCellValue((Integer) day.get("total"));
-            row.createCell(2).setCellValue((Integer) day.get("posterCount"));
-            row.createCell(3).setCellValue((Integer) day.get("videoCount"));
-            row.createCell(4).setCellValue((Integer) day.get("success"));
-        }
+            row.setHeight((short) 375);
+            Cell cell0 = row.createCell(0);
+            cell0.setCellValue((String) day.get("date"));
+            cell0.setCellStyle(dataStyle);
 
-        for (int i = 0; i < headers.length; i++) {
-            sheet.autoSizeColumn(i);
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue((Integer) day.get("total"));
+            cell1.setCellStyle(dataStyle);
+
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue((Integer) day.get("posterCount"));
+            cell2.setCellStyle(dataStyle);
+
+            Cell cell3 = row.createCell(3);
+            cell3.setCellValue((Integer) day.get("videoCount"));
+            cell3.setCellStyle(dataStyle);
+
+            Cell cell4 = row.createCell(4);
+            cell4.setCellValue((Integer) day.get("success"));
+            cell4.setCellStyle(dataStyle);
         }
     }
 
-    private void createDeviceRankSheet(Sheet sheet, CellStyle headerStyle, LocalDateTime start, LocalDateTime end) {
+    private void createDeviceRankSheet(Sheet sheet, CellStyle headerStyle, CellStyle dataStyle, LocalDateTime start, LocalDateTime end) {
         String[] headers = {"排名", "设备名称", "推送次数"};
+        int[] colWidths = {8, 20, 12};
         Row headerRow = sheet.createRow(0);
+        headerRow.setHeight((short) 375);
         for (int i = 0; i < headers.length; i++) {
             Cell cell = headerRow.createCell(i);
             cell.setCellValue(headers[i]);
             cell.setCellStyle(headerStyle);
+            sheet.setColumnWidth(i, colWidths[i] * 256);
         }
 
         List<Map<String, Object>> rank = generateDeviceRankOptimized(start, end, 20);
         int rowNum = 1;
         for (Map<String, Object> device : rank) {
             Row row = sheet.createRow(rowNum);
-            row.createCell(0).setCellValue(rowNum);
-            row.createCell(1).setCellValue((String) device.get("name"));
-            row.createCell(2).setCellValue((Integer) device.get("count"));
-            rowNum++;
-        }
+            row.setHeight((short) 375);
 
-        for (int i = 0; i < headers.length; i++) {
-            sheet.autoSizeColumn(i);
+            Cell cell0 = row.createCell(0);
+            cell0.setCellValue(rowNum);
+            cell0.setCellStyle(dataStyle);
+
+            Cell cell1 = row.createCell(1);
+            cell1.setCellValue((String) device.get("name"));
+            cell1.setCellStyle(dataStyle);
+
+            Cell cell2 = row.createCell(2);
+            cell2.setCellValue((Integer) device.get("count"));
+            cell2.setCellStyle(dataStyle);
+
+            rowNum++;
         }
     }
 
@@ -814,10 +963,14 @@ public class StatisticsServiceImpl implements StatisticsService {
     private String getPushStatusText(Integer status) {
         if (status == null) return "未知";
         switch (status) {
-            case 0: return "推送中";
-            case 1: return "成功";
-            case 2: return "失败";
-            default: return "未知";
+            case 0:
+                return "推送中";
+            case 1:
+                return "成功";
+            case 2:
+                return "失败";
+            default:
+                return "未知";
         }
     }
 

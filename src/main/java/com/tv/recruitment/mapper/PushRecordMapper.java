@@ -19,17 +19,33 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
     /**
      * 聚合统计：一次查询获取总数、成功数、失败数、海报数、视频数
      */
-    @Select("""
-        SELECT
-            COUNT(*) as total,
-            SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success,
-            SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail,
-            SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount,
-            SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount
-        FROM t_push_record
-        WHERE push_time >= #{start} AND push_time <= #{end}
-        """)
+    @Select("SELECT COUNT(*) as total, " +
+            "SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success, " +
+            "SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail, " +
+            "SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount, " +
+            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount " +
+            "FROM t_push_record " +
+            "WHERE push_time >= #{start} AND push_time <= #{end}")
     Map<String, Object> selectPushSummary(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
+
+    /**
+     * 带筛选条件的聚合统计
+     */
+    @Select("<script>" +
+            "SELECT COUNT(*) as total, " +
+            "SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success, " +
+            "SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail, " +
+            "SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount, " +
+            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount " +
+            "FROM t_push_record " +
+            "WHERE push_time &gt;= #{start} AND push_time &lt;= #{end} " +
+            "<if test='deviceId != null'>AND (target_ids = #{deviceIdStr} OR target_ids LIKE CONCAT('%,', #{deviceIdStr}, ',%') OR target_ids LIKE CONCAT('[', #{deviceIdStr}, ',%') OR target_ids LIKE CONCAT('%,', #{deviceIdStr}, ']'))</if>" +
+            "<if test='contentType != null'>AND content_type = #{contentType}</if>" +
+            "<if test='pushStatus != null'>AND push_status = #{pushStatus}</if>" +
+            "</script>")
+    Map<String, Object> selectPushSummaryWithFilters(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end,
+            @Param("deviceId") Long deviceId, @Param("deviceIdStr") String deviceIdStr,
+            @Param("contentType") Integer contentType, @Param("pushStatus") Integer pushStatus);
 
     /**
      * 按日期分组查询趋势
