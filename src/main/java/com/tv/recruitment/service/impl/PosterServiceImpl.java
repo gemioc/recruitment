@@ -111,7 +111,16 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
 
     @Override
     public PosterResponse generateAlias(Poster poster) {
-        String filePath = posterGenerateService.generateFromJob(poster);
+        String filePath;
+
+        // 如果前端提供了SVG内容，直接使用
+        if (poster.getSvgContent() != null && !poster.getSvgContent().isEmpty()) {
+            filePath = posterGenerateService.generateFromSvg(poster.getSvgContent());
+        } else {
+            // 否则根据模板和职位信息生成
+            filePath = posterGenerateService.generateFromJob(poster);
+        }
+
         poster.setFilePath(filePath);
         posterMapper.insert(poster);
         return convertToResponse(poster);

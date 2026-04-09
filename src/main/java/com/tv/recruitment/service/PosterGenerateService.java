@@ -24,4 +24,11 @@ public interface PosterGenerateService {
      * @return 生成的海报文件路径
      */
     String generateFromJob(Poster poster);
+
+    /**
+     * 直接使用SVG内容生成海报PNG
+     * @param svgContent SVG内容
+     * @return 生成的海报文件路径
+     */
+    String generateFromSvg(String svgContent);
 }

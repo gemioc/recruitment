@@ -135,6 +135,20 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
         return generatePoster(templateId, data);
     }
 
+    @Override
+    public String generateFromSvg(String svgContent) {
+        if (svgContent == null || svgContent.isEmpty()) {
+            throw new IllegalArgumentException("SVG内容不能为空");
+        }
+
+        String fileName = "poster_" + System.currentTimeMillis() + ".png";
+        String filePath = "/posters/" + fileName;
+
+        savePosterAsPng(filePath, svgContent);
+
+        return filePath;
+    }
+
     /**
      * 使用默认模板生成海报
      */

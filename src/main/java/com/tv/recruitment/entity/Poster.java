@@ -52,4 +52,10 @@ public class Poster extends BaseEntity {
      */
     @TableField(exist = false)
     private LocalDateTime updateTime;
+
+    /**
+     * 前端渲染的SVG内容（不存储，用于直接生成PNG）
+     */
+    @TableField(exist = false)
+    private String svgContent;
 }
