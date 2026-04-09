@@ -215,8 +215,8 @@ INSERT INTO `t_user` (`username`, `password`, `real_name`, `role`, `status`) VAL
 ('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.rsQ5pPjZ5yVlWK5WAe', '系统管理员', 1, 1);
 
 -- 海报模板 (只保留横版)
-INSERT INTO `t_poster_template` (`template_name`, `template_path`, `color_scheme`, `preview_path`, `is_default`, `status`) VALUES
-('蓝色商务横版', '/templates/template-business.svg', 'BLUE', '/templates/template-business.svg', 1, 1);
+INSERT INTO tv_recruitment.t_poster_template (id, template_name, template_path, color_scheme, preview_path, is_default, status, create_by, create_time, update_time, deleted) VALUES (26, '蓝色商务横版', '/templates/template-business.svg', 'BLUE', '/templates/template-business.svg', 1, 1, null, '2026-03-26 00:00:42', '2026-03-26 00:50:07', 0);
+INSERT INTO tv_recruitment.t_poster_template (id, template_name, template_path, color_scheme, preview_path, is_default, status, create_by, create_time, update_time, deleted) VALUES (33, '蓝白商务模板', '/templates/template-admin.svg', 'BLUE', '/templates/template-admin.svg', 0, 1, null, '2026-04-09 15:15:12', '2026-04-09 15:42:24', 0);
 
 -- 系统配置
 INSERT INTO `t_system_config` (`config_key`, `config_value`, `description`) VALUES
