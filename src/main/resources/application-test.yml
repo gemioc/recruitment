@@ -1,10 +1,10 @@
 # ==============================================
-# 开发环境配置 - 本地开发
+# 测试环境配置 - 阿里云服务器部署
 # ==============================================
 spring:
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://39.105.141.212:3306/tv_recruitment?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true
+    url: jdbc:mysql://127.0.0.1:3306/tv_recruitment?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true
     username: root
     password: Tv@recru2026
     hikari:
@@ -16,11 +16,10 @@ spring:
       connection-test-query: SELECT 1
       validation-timeout: 3000
 
-# 文件存储配置 - 开发环境自动检测
+# 文件存储配置
 file:
   storage:
-    # dev环境: 自动检测 Windows user.dir/tv-files 或 Linux /home/tv_recru/tv-files
-    base-path: ${TV_FILES_PATH:D:\B-code_space\tv-files}
+    base-path: ${TV_FILES_PATH:/home/tv_recru/tv-files}
     image-path: /images
     video-path: /videos
     poster-path: /posters

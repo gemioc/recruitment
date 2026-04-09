@@ -4,7 +4,9 @@ import com.tv.recruitment.common.result.Result;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.catalina.connector.ClientAbortException;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.AuthenticationException;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
+import java.io.IOException;
 import java.util.stream.Collectors;
 
 /**
@@ -93,6 +96,25 @@ public class GlobalExceptionHandler {
             return Result.error(1002, "用户名或密码错误");
         }
         return Result.error(401, "认证失败");
+    }
+
+    /**
+     * 客户端断开连接（Broken pipe）- 文件下载时网络不稳定导致
+     * 不返回错误响应，客户端已断开
+     */
+    @ExceptionHandler(ClientAbortException.class)
+    public ResponseEntity<?> handleClientAbortException(ClientAbortException e) {
+        log.warn("客户端断开连接: {}", e.getMessage());
+        return ResponseEntity.ok().build();
+    }
+
+    /**
+     * IO异常 - 流传输过程中的异常
+     */
+    @ExceptionHandler(IOException.class)
+    public ResponseEntity<?> handleIOException(IOException e) {
+        log.warn("IO异常: {}", e.getMessage());
+        return ResponseEntity.ok().build();
     }
 
     /**

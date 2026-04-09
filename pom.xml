@@ -160,7 +160,7 @@
         </dependency>
     </dependencies>
 
-    <!-- 多环境配置：dev 开发 / prod 生产 -->
+    <!-- 多环境配置 -->
     <profiles>
         <!-- 本地开发环境 -->
         <profile>
@@ -173,7 +173,15 @@
             </properties>
         </profile>
 
-        <!-- 服务器生产环境 -->
+        <!-- 阿里云测试环境 -->
+        <profile>
+            <id>test</id>
+            <properties>
+                <profiles.active>test</profiles.active>
+            </properties>
+        </profile>
+
+        <!-- docker正式环境 -->
         <profile>
             <id>prod</id>
             <properties>
