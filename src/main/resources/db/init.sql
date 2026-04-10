@@ -212,7 +212,7 @@ CREATE TABLE IF NOT EXISTS `t_system_config` (
 
 -- 默认管理员账号 (密码: admin123)
 INSERT INTO `t_user` (`username`, `password`, `real_name`, `role`, `status`) VALUES
-('admin', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZRGdjGj/n3.rsQ5pPjZ5yVlWK5WAe', '系统管理员', 1, 1);
+('admin', '$2a$10$naxiXSYlnicrMLDKYOmcmu1CR9IAHcbdVAQZh/yKhDVzxlTQh.Jr2', '系统管理员', 1, 1);
 
 -- 海报模板 (只保留横版)
 INSERT INTO tv_recruitment.t_poster_template (id, template_name, template_path, color_scheme, preview_path, is_default, status, create_by, create_time, update_time, deleted) VALUES (26, '蓝色商务横版', '/templates/template-business.svg', 'BLUE', '/templates/template-business.svg', 1, 1, null, '2026-03-26 00:00:42', '2026-03-26 00:50:07', 0);

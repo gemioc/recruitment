@@ -6,7 +6,7 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
     # Docker容器内访问Windows宿主机MySQL用 host.docker.internal
     # 生产环境通过环境变量覆盖: SPRING_DATASOURCE_URL
-    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://host.docker.internal:3306/tv_recruitment?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true}
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://mysql:3306/tv_recruitment?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&autoReconnect=true}
     username: ${SPRING_DATASOURCE_USERNAME:root}
     password: ${SPRING_DATASOURCE_PASSWORD:Tv@recru2026}
     hikari:
