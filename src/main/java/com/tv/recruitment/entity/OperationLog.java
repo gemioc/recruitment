@@ -73,5 +73,5 @@ public class OperationLog implements Serializable {
     /**
      * 执行时长（毫秒）
      */
-    private Integer executionTime;
+    private Long executionTime;
 }

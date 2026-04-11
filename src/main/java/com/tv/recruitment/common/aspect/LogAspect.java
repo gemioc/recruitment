@@ -12,9 +12,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.JoinPoint;
-import org.aspectj.lang.annotation.AfterReturning;
-import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.ProceedingJoinPoint;
+import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.annotation.Pointcut;
 import org.aspectj.lang.reflect.MethodSignature;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
@@ -25,11 +26,7 @@ import org.springframework.web.multipart.MultipartFile;
 import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import java.time.LocalDateTime;
-import java.util.Arrays;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * 操作日志切面
@@ -43,25 +40,35 @@ public class LogAspect {
     private final OperationLogMapper operationLogMapper;
 
     /**
-     * 处理正常返回
+     * 切入点
      */
-    @AfterReturning(pointcut = "@annotation(logAnnotation)", returning = "result")
-    public void doAfterReturning(JoinPoint joinPoint, Log logAnnotation, Object result) {
-        handleLog(joinPoint, logAnnotation, result, null);
-    }
+    @Pointcut("@annotation(com.tv.recruitment.common.annotation.Log)")
+    public void pointcut() {}
 
     /**
-     * 处理异常
+     * 环绕通知 - 记录执行时间
      */
-    @AfterThrowing(pointcut = "@annotation(logAnnotation)", throwing = "e")
-    public void doAfterThrowing(JoinPoint joinPoint, Log logAnnotation, Exception e) {
-        handleLog(joinPoint, logAnnotation, null, e);
+    @Around("pointcut() && @annotation(log)")
+    public Object doAround(ProceedingJoinPoint joinPoint, Log log) throws Throwable {
+        long startTime = System.currentTimeMillis();
+        Object result = null;
+        Exception exception = null;
+        try {
+            result = joinPoint.proceed();
+            return result;
+        } catch (Exception e) {
+            exception = e;
+            throw e;
+        } finally {
+            long executionTime = System.currentTimeMillis() - startTime;
+            handleLog(joinPoint, log, result, exception, executionTime);
+        }
     }
 
     /**
      * 统一处理日志记录
      */
-    private void handleLog(JoinPoint joinPoint, Log logAnnotation, Object result, Exception e) {
+    private void handleLog(JoinPoint joinPoint, Log logAnnotation, Object result, Exception e, long executionTime) {
         try {
             HttpServletRequest request = getRequest();
 
@@ -98,7 +105,7 @@ public class LogAspect {
             }
 
             // 执行时间
-            operationLog.setExecutionTime(0);
+            operationLog.setExecutionTime(executionTime);
 
             // 异步保存
             saveLogAsync(operationLog);

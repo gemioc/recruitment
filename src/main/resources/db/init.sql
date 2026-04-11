@@ -189,7 +189,7 @@ CREATE TABLE IF NOT EXISTS `t_operation_log` (
   `response_result` TEXT DEFAULT NULL COMMENT '响应结果',
   `ip_address` VARCHAR(50) DEFAULT NULL COMMENT 'IP地址',
   `operation_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
-  `execution_time` INT DEFAULT NULL COMMENT '执行时长(毫秒)',
+  `execution_time` BIGINT DEFAULT NULL COMMENT '执行时长(毫秒)',
   PRIMARY KEY (`id`),
   KEY `idx_user_id` (`user_id`),
   KEY `idx_operation_type` (`operation_type`),

@@ -92,7 +92,12 @@ public class FileStorageServiceImpl implements FileStorageService {
 
     @Override
     public String getFileUrl(String filePath) {
-        return "/files/" + filePath;
+        // 返回相对路径，前端根据环境自行拼接完整URL
+        // dev: /api/files/images/...  prod: /files/images/...
+        if (filePath.startsWith("/")) {
+            return filePath;
+        }
+        return "/" + filePath;
     }
 
     private String getTypePath(String type) {
