@@ -279,7 +279,10 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
         String responsibilities = data.get("responsibilities");
         String requirements = data.get("requirements");
         String welfare = data.get("welfare");
+        String company = data.get("company");
 
+        // 公司名称换行，使用完整text元素包裹tspans
+        result.put("company_tspan", formatTextToTspan(company, 300, 220, 65, 9));
         result.put("responsibilities", formatTextToTspan(responsibilities, 70, 350, 22, 60));
         result.put("requirements", formatTextToTspan(requirements, 70, 535, 22, 60));
         result.put("welfare", formatTextToTspan(welfare, 70, 740, 22, 60));
@@ -349,48 +352,47 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
               </defs>
               <rect width="1920" height="1080" fill="url(#bgGrad)"/>
               <g transform="translate(80, 80)">
-                <circle cx="300" cy="350" r="280" fill="#3B82F6" opacity="0.15"/>
-                <circle cx="300" cy="350" r="180" fill="#3B82F6" opacity="0.2"/>
-                <text x="300" y="180" font-family="Noto Sans CJK SC, sans-serif" font-size="24" fill="#FFFFFF" text-anchor="middle" opacity="0.9">{{company}}</text>
-                <text x="300" y="280" font-family="Noto Sans CJK SC, sans-serif" font-size="72" fill="#FFFFFF" text-anchor="middle" font-weight="bold">诚聘英才</text>
-                <text x="300" y="340" font-family="Arial, sans-serif" font-size="28" fill="#FFFFFF" text-anchor="middle" opacity="0.8">JOIN US</text>
-                <rect x="200" y="370" width="200" height="4" fill="#4A90C8" rx="2"/>
-                <rect x="50" y="420" width="500" height="80" rx="10" fill="#FFFFFF" opacity="0.95"/>
-                <text x="300" y="475" font-family="Noto Sans CJK SC, sans-serif" font-size="36" fill="#1E3A5F" text-anchor="middle" font-weight="bold">{{jobTitle}}</text>
-                <text x="300" y="560" font-family="Noto Sans CJK SC, sans-serif" font-size="42" fill="#FFD700" text-anchor="middle" font-weight="bold">{{salary}}</text>
+                <circle cx="300" cy="540" r="280" fill="#3B82F6" opacity="0.15"/>
+                <circle cx="300" cy="540" r="180" fill="#3B82F6" opacity="0.2"/>
+                <text x="300" y="220" font-family="Noto Sans CJK SC, sans-serif" font-size="56" fill="#FFFFFF" text-anchor="middle" font-weight="bold">{{company_tspan}}</text>
+                <text x="300" y="420" font-family="Arial, sans-serif" font-size="28" fill="#FFFFFF" text-anchor="middle" opacity="0.8">JOIN US</text>
+                <rect x="200" y="455" width="200" height="4" fill="#4A90C8" rx="2"/>
+                <rect x="50" y="510" width="500" height="80" rx="10" fill="#FFFFFF" opacity="0.95"/>
+                <text x="300" y="565" font-family="Noto Sans CJK SC, sans-serif" font-size="36" fill="#1E3A5F" text-anchor="middle" font-weight="bold">{{jobTitle}}</text>
+                <text x="300" y="660" font-family="Noto Sans CJK SC, sans-serif" font-size="42" fill="#FFD700" text-anchor="middle" font-weight="bold">{{salary}}</text>
               </g>
-              <g transform="translate(720, 80)">
-                <rect x="0" y="0" width="1100" height="920" rx="20" fill="#FFFFFF"/>
-                <text x="550" y="50" font-family="Arial, sans-serif" font-size="24" fill="#64748B" text-anchor="middle">POSITION DETAILS</text>
-                <text x="550" y="90" font-family="Noto Sans CJK SC, sans-serif" font-size="32" fill="#1E3A5F" text-anchor="middle" font-weight="bold">职位详情</text>
-                <line x1="50" y1="115" x2="1050" y2="115" stroke="#E2E8F0" stroke-width="2"/>
+              <g transform="translate(760, 80)">
+                <rect x="0" y="0" width="1060" height="920" rx="20" fill="#FFFFFF"/>
+                <text x="530" y="50" font-family="Arial, sans-serif" font-size="24" fill="#64748B" text-anchor="middle">POSITION DETAILS</text>
+                <text x="530" y="90" font-family="Noto Sans CJK SC, sans-serif" font-size="32" fill="#1E3A5F" text-anchor="middle" font-weight="bold">职位详情</text>
+                <line x1="50" y1="115" x2="1010" y2="115" stroke="#E2E8F0" stroke-width="2"/>
                 <g transform="translate(50, 140)">
-                  <rect x="0" y="0" width="480" height="50" rx="8" fill="#F8FAFC"/>
+                  <rect x="0" y="0" width="440" height="50" rx="8" fill="#F8FAFC"/>
                   <text x="20" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">工作地点</text>
-                  <text x="460" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{location}}</text>
-                  <rect x="500" y="0" width="480" height="50" rx="8" fill="#F8FAFC"/>
-                  <text x="520" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">学历要求</text>
-                  <text x="960" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{education}}</text>
-                  <rect x="0" y="65" width="480" height="50" rx="8" fill="#F8FAFC"/>
+                  <text x="420" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{location}}</text>
+                  <rect x="460" y="0" width="440" height="50" rx="8" fill="#F8FAFC"/>
+                  <text x="480" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">学历要求</text>
+                  <text x="880" y="33" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{education}}</text>
+                  <rect x="0" y="65" width="440" height="50" rx="8" fill="#F8FAFC"/>
                   <text x="20" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">经验要求</text>
-                  <text x="460" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{experience}}</text>
-                  <rect x="500" y="65" width="480" height="50" rx="8" fill="#F8FAFC"/>
-                  <text x="520" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">招聘人数</text>
-                  <text x="960" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{recruitCount}}人</text>
+                  <text x="420" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{experience}}</text>
+                  <rect x="460" y="65" width="440" height="50" rx="8" fill="#F8FAFC"/>
+                  <text x="480" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#64748B">招聘人数</text>
+                  <text x="880" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{recruitCount}}人</text>
                 </g>
                 <text x="50" y="300" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">岗位职责</text>
-                <rect x="50" y="320" width="1000" height="120" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+                <rect x="50" y="320" width="960" height="120" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
                 <text x="70" y="350" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{responsibilities}}</text>
                 <text x="50" y="480" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">任职要求</text>
-                <rect x="50" y="500" width="1000" height="140" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+                <rect x="50" y="500" width="960" height="140" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
                 <text x="70" y="535" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{requirements}}</text>
                 <text x="50" y="680" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">福利待遇</text>
-                <rect x="50" y="700" width="1000" height="100" rx="10" fill="#EFF6FF"/>
+                <rect x="50" y="700" width="960" height="100" rx="10" fill="#EFF6FF"/>
                 <text x="70" y="740" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{welfare}}</text>
-                <rect x="50" y="830" width="1000" height="60" rx="10" fill="#1E3A5F"/>
+                <rect x="50" y="830" width="960" height="60" rx="10" fill="#1E3A5F"/>
                 <text x="150" y="868" font-family="Noto Sans CJK SC, sans-serif" font-size="18" fill="#FFFFFF">联系人：{{contactName}}</text>
-                <text x="550" y="868" font-family="Noto Sans CJK SC, sans-serif" font-size="18" fill="#FFFFFF" text-anchor="middle">联系电话：{{contactPhone}}</text>
-                <text x="950" y="868" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#FFFFFF" text-anchor="end" opacity="0.8">期待您的加入</text>
+                <text x="530" y="868" font-family="Noto Sans CJK SC, sans-serif" font-size="18" fill="#FFFFFF" text-anchor="middle">联系电话：{{contactPhone}}</text>
+                <text x="990" y="868" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#FFFFFF" text-anchor="end" opacity="0.8">期待您的加入</text>
               </g>
             </svg>
             """;

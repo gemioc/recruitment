@@ -10,12 +10,14 @@ import com.tv.recruitment.dto.request.PushRequest;
 import com.tv.recruitment.dto.response.PushRecordResponse;
 import com.tv.recruitment.entity.Device;
 import com.tv.recruitment.entity.DeviceGroup;
+import com.tv.recruitment.entity.Image;
 import com.tv.recruitment.entity.Poster;
 import com.tv.recruitment.entity.PushRecord;
 import com.tv.recruitment.entity.User;
 import com.tv.recruitment.entity.Video;
 import com.tv.recruitment.mapper.DeviceGroupMapper;
 import com.tv.recruitment.mapper.DeviceMapper;
+import com.tv.recruitment.mapper.ImageMapper;
 import com.tv.recruitment.mapper.PosterMapper;
 import com.tv.recruitment.mapper.PushRecordMapper;
 import com.tv.recruitment.mapper.UserMapper;
@@ -46,6 +48,7 @@ public class PushServiceImpl implements PushService {
     private final WebSocketHandler webSocketHandler;
     private final PosterMapper posterMapper;
     private final VideoMapper videoMapper;
+    private final ImageMapper imageMapper;
     private final DeviceMapper deviceMapper;
     private final DeviceGroupMapper deviceGroupMapper;
     private final UserMapper userMapper;
@@ -157,8 +160,15 @@ public class PushServiceImpl implements PushService {
 
     @Override
     public Long pushMultiple(PushRequest request) {
-        // 转换contentType: poster -> 1, video -> 2
-        int contentTypeInt = "video".equals(request.getContentType()) ? 2 : 1;
+        // 转换contentType: poster -> 1, video -> 2, image -> 3
+        int contentTypeInt;
+        if ("image".equals(request.getContentType())) {
+            contentTypeInt = 3;
+        } else if ("video".equals(request.getContentType())) {
+            contentTypeInt = 2;
+        } else {
+            contentTypeInt = 1;
+        }
 
         // 获取所有内容ID
         List<Long> contentIds = request.getContentIds();
@@ -185,10 +195,15 @@ public class PushServiceImpl implements PushService {
                 if (poster != null) {
                     contentNames.add(poster.getPosterName());
                 }
-            } else {
+            } else if (contentTypeInt == 2) {
                 Video video = videoMapper.selectById(contentId);
                 if (video != null) {
                     contentNames.add(video.getVideoName());
+                }
+            } else if (contentTypeInt == 3) {
+                Image image = imageMapper.selectById(contentId);
+                if (image != null) {
+                    contentNames.add(image.getImageName());
                 }
             }
         }
@@ -341,18 +356,29 @@ public class PushServiceImpl implements PushService {
 
         // 获取内容URL
         String contentUrl = null;
-        String contentType = record.getContentType() == 1 ? "poster" : "video";
-
-        if (record.getContentId() != null) {
-            if (record.getContentType() == 1) {
+        String contentType;
+        if (record.getContentType() == 1) {
+            contentType = "poster";
+            if (record.getContentId() != null) {
                 Poster poster = posterMapper.selectById(record.getContentId());
                 if (poster != null) {
                     contentUrl = poster.getFilePath();
                 }
-            } else {
+            }
+        } else if (record.getContentType() == 2) {
+            contentType = "video";
+            if (record.getContentId() != null) {
                 Video video = videoMapper.selectById(record.getContentId());
                 if (video != null) {
                     contentUrl = video.getFilePath();
+                }
+            }
+        } else {
+            contentType = "image";
+            if (record.getContentId() != null) {
+                Image image = imageMapper.selectById(record.getContentId());
+                if (image != null) {
+                    contentUrl = image.getFilePath();
                 }
             }
         }
@@ -421,7 +447,7 @@ public class PushServiceImpl implements PushService {
             return;
         }
 
-        String contentType = contentTypeInt == 1 ? "poster" : "video";
+        String contentType = contentTypeInt == 1 ? "poster" : (contentTypeInt == 2 ? "video" : "image");
 
         // 获取所有内容URL
         List<String> contentUrls = new ArrayList<>();
@@ -432,10 +458,15 @@ public class PushServiceImpl implements PushService {
                 if (poster != null) {
                     url = poster.getFilePath();
                 }
-            } else {
+            } else if (contentTypeInt == 2) {
                 Video video = videoMapper.selectById(contentId);
                 if (video != null) {
                     url = video.getFilePath();
+                }
+            } else if (contentTypeInt == 3) {
+                Image image = imageMapper.selectById(contentId);
+                if (image != null) {
+                    url = image.getFilePath();
                 }
             }
 
@@ -543,7 +574,15 @@ public class PushServiceImpl implements PushService {
     public PushRecordResponse convertToResponse(PushRecord record) {
         PushRecordResponse response = new PushRecordResponse();
         response.setId(record.getId());
-        response.setContentType(record.getContentType() == 1 ? "poster" : "video");
+        if (record.getContentType() == 1) {
+            response.setContentType("poster");
+        } else if (record.getContentType() == 2) {
+            response.setContentType("video");
+        } else if (record.getContentType() == 3) {
+            response.setContentType("image");
+        } else {
+            response.setContentType("unknown");
+        }
         response.setContentTitle(record.getContentName());
         response.setPushType(record.getPushType());
         response.setDeviceCount(record.getDeviceCount());
