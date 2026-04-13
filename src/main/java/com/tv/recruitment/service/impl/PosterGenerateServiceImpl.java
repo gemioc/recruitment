@@ -104,9 +104,8 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
             data.put("education", job.getEducation() != null ? job.getEducation() : "不限");
             data.put("experience", job.getExperience() != null ? job.getExperience() : "不限");
             data.put("recruitCount", job.getRecruitCount() != null ? String.valueOf(job.getRecruitCount()) : "若干");
-            // 岗位职责、任职要求、福利待遇 - 原始文本，后续处理换行
-            data.put("responsibilities", job.getResponsibilities() != null ? job.getResponsibilities() : "面议");
-            data.put("requirements", job.getRequirements() != null ? job.getRequirements() : "面议");
+            // 职位信息、福利待遇 - 原始文本，后续处理换行
+            data.put("jobInfo", job.getJobInfo() != null ? job.getJobInfo() : "面议");
             data.put("welfare", job.getWelfare() != null ? job.getWelfare() : "面议");
             data.put("contactName", job.getContactName() != null ? job.getContactName() : "");
             data.put("contactPhone", job.getContactPhone() != null ? job.getContactPhone() : "");
@@ -119,8 +118,7 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
             data.put("education", "不限");
             data.put("experience", "不限");
             data.put("recruitCount", "若干");
-            data.put("responsibilities", "面议");
-            data.put("requirements", "面议");
+            data.put("jobInfo", "面议");
             data.put("welfare", "面议");
             data.put("contactName", "");
             data.put("contactPhone", "");
@@ -223,16 +221,18 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
             int charCount = 0;
 
             for (char c : paragraph.toCharArray()) {
-                // 中文字符算1个，英文/数字/符号算0.5个
+                // 中文字符宽度约1，英文/数字/符号约0.5
                 double charWidth = (c >= 0x4E00 && c <= 0x9FFF) ? 1.0 : 0.5;
-                charCount += (int) Math.ceil(charWidth);
 
-                if (charCount > charsPerLine && currentLine.length() > 0) {
+                // 如果加上这个字符会超出限制，且当前行不为空，则换行
+                if (charCount + charWidth > charsPerLine && currentLine.length() > 0) {
                     lines.add(currentLine.toString());
                     currentLine = new StringBuilder();
-                    charCount = (int) Math.ceil(charWidth);
+                    charCount = 0;
                 }
+
                 currentLine.append(c);
+                charCount += charWidth;
             }
 
             if (currentLine.length() > 0) {
@@ -275,17 +275,15 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
     private Map<String, String> processDataWithTextWrapping(Map<String, String> data) {
         Map<String, String> result = new HashMap<>(data);
 
-        // 横版模板参数：x=70, lineHeight=22, charsPerLine=60
-        String responsibilities = data.get("responsibilities");
-        String requirements = data.get("requirements");
+        // 横版模板参数：x=70, lineHeight=22, charsPerLine=50（保守值，避免溢出）
+        String jobInfo = data.get("jobInfo");
         String welfare = data.get("welfare");
         String company = data.get("company");
 
         // 公司名称换行，使用完整text元素包裹tspans
         result.put("company_tspan", formatTextToTspan(company, 300, 220, 65, 9));
-        result.put("responsibilities", formatTextToTspan(responsibilities, 70, 350, 22, 60));
-        result.put("requirements", formatTextToTspan(requirements, 70, 535, 22, 60));
-        result.put("welfare", formatTextToTspan(welfare, 70, 740, 22, 60));
+        result.put("jobInfo", formatTextToTspan(jobInfo, 70, 350, 22, 50));
+        result.put("welfare", formatTextToTspan(welfare, 70, 740, 22, 50));
 
         return result;
     }
@@ -381,12 +379,10 @@ public class PosterGenerateServiceImpl implements PosterGenerateService {
                   <text x="880" y="98" font-family="Noto Sans CJK SC, sans-serif" font-size="16" fill="#1E293B" text-anchor="end" font-weight="500">{{recruitCount}}人</text>
                 </g>
                 <text x="50" y="300" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">岗位职责</text>
-                <rect x="50" y="320" width="960" height="120" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
-                <text x="70" y="350" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{responsibilities}}</text>
-                <text x="50" y="480" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">任职要求</text>
-                <rect x="50" y="500" width="960" height="140" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
-                <text x="70" y="535" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{requirements}}</text>
-                <text x="50" y="680" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">福利待遇</text>
+                <text x="50" y="350" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">职位信息</text>
+                <rect x="50" y="370" width="960" height="200" rx="10" fill="#F8FAFC" stroke="#E2E8F0" stroke-width="1"/>
+                <text x="70" y="400" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{jobInfo}}</text>
+                <text x="50" y="610" font-family="Noto Sans CJK SC, sans-serif" font-size="20" fill="#1E3A5F" font-weight="bold">福利待遇</text>
                 <rect x="50" y="700" width="960" height="100" rx="10" fill="#EFF6FF"/>
                 <text x="70" y="740" font-family="Noto Sans CJK SC, sans-serif" font-size="15" fill="#475569">{{welfare}}</text>
                 <rect x="50" y="830" width="960" height="60" rx="10" fill="#1E3A5F"/>

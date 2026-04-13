@@ -52,11 +52,8 @@ public class Job extends BaseEntity {
     @ExcelProperty("联系邮箱")
     private String contactEmail;
 
-    @ExcelProperty("岗位职责")
-    private String responsibilities;
-
-    @ExcelProperty("任职要求")
-    private String requirements;
+    @ExcelProperty("职位信息")
+    private String jobInfo;
 
     @ExcelProperty("福利待遇")
     private String welfare;

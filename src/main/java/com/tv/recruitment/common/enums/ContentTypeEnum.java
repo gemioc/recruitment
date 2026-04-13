@@ -11,7 +11,8 @@ import lombok.Getter;
 public enum ContentTypeEnum {
 
     POSTER(1, "海报"),
-    VIDEO(2, "视频");
+    VIDEO(2, "视频"),
+    IMAGE(3, "图片");
 
     private final Integer code;
     private final String desc;

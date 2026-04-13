@@ -37,9 +37,8 @@ CREATE TABLE IF NOT EXISTS `t_job` (
   `work_address` VARCHAR(200) NOT NULL COMMENT '工作地址',
   `education` VARCHAR(20) DEFAULT '不限' COMMENT '学历要求',
   `experience` VARCHAR(20) DEFAULT '不限' COMMENT '经验要求',
-  `requirements` TEXT NOT NULL COMMENT '任职要求',
+  `job_info` TEXT DEFAULT NULL COMMENT '职位信息',
   `recruit_count` INT DEFAULT 1 COMMENT '招聘人数',
-  `responsibilities` TEXT DEFAULT NULL COMMENT '岗位职责',
   `welfare` VARCHAR(500) DEFAULT NULL COMMENT '公司福利',
   `contact_name` VARCHAR(50) DEFAULT NULL COMMENT '联系人',
   `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
@@ -207,6 +206,24 @@ CREATE TABLE IF NOT EXISTS `t_system_config` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_config_key` (`config_key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='系统配置表';
+
+-- 图片管理表
+CREATE TABLE IF NOT EXISTS `t_image` (
+    `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+    `image_name` varchar(255) NOT NULL COMMENT '图片名称',
+    `file_path` varchar(500) NOT NULL COMMENT '图片文件路径',
+    `thumbnail_path` varchar(500) DEFAULT NULL COMMENT '缩略图路径',
+    `file_size` bigint DEFAULT NULL COMMENT '文件大小（字节）',
+    `width` int DEFAULT NULL COMMENT '图片宽度',
+    `height` int DEFAULT NULL COMMENT '图片高度',
+    `is_top` tinyint DEFAULT '0' COMMENT '是否置顶（0-否，1-是）',
+    `create_by` bigint DEFAULT NULL COMMENT '创建人ID',
+    `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    `update_by` bigint DEFAULT NULL COMMENT '更新人ID',
+    `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    `deleted` tinyint DEFAULT '0' COMMENT '删除标志（0-未删除，1-已删除）',
+    PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci COMMENT='图片管理表';
 
 -- 初始化数据
 
