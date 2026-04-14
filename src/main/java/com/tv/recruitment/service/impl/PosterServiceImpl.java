@@ -137,11 +137,13 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
         // 如果提供了svgContent（多岗位海报），只生成一张
         if (svgContent != null && !svgContent.isEmpty()) {
             Poster poster = new Poster();
-            // jobIds.get(0) 可能是 Integer 类型，需要转换为 Long
+            // jobIds中的元素从JSON反序列化时可能是Integer，统一转为Long后存入jobId
             if (jobIds != null && !jobIds.isEmpty()) {
                 Object firstId = jobIds.get(0);
                 if (firstId instanceof Long) {
                     poster.setJobId((Long) firstId);
+                } else if (firstId instanceof Integer) {
+                    poster.setJobId(((Integer) firstId).longValue());
                 }
                 // 保存所有岗位ID为JSON格式
                 poster.setJobIds(objectMapper.writeValueAsString(jobIds));
