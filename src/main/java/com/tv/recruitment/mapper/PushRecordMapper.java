@@ -23,7 +23,8 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
             "SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success, " +
             "SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail, " +
             "SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount, " +
-            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount " +
+            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount, " +
+            "SUM(CASE WHEN content_type = 3 THEN 1 ELSE 0 END) as imageCount " +
             "FROM t_push_record " +
             "WHERE push_time >= #{start} AND push_time <= #{end}")
     Map<String, Object> selectPushSummary(@Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
@@ -36,7 +37,8 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
             "SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success, " +
             "SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail, " +
             "SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount, " +
-            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount " +
+            "SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount, " +
+            "SUM(CASE WHEN content_type = 3 THEN 1 ELSE 0 END) as imageCount " +
             "FROM t_push_record " +
             "WHERE push_time &gt;= #{start} AND push_time &lt;= #{end} " +
             "<if test='deviceId != null'>AND (target_ids = #{deviceIdStr} OR target_ids LIKE CONCAT('%,', #{deviceIdStr}, ',%') OR target_ids LIKE CONCAT('[', #{deviceIdStr}, ',%') OR target_ids LIKE CONCAT('%,', #{deviceIdStr}, ']'))</if>" +
@@ -57,7 +59,8 @@ public interface PushRecordMapper extends BaseMapper<PushRecord> {
             SUM(CASE WHEN push_status = 1 THEN 1 ELSE 0 END) as success,
             SUM(CASE WHEN push_status = 2 THEN 1 ELSE 0 END) as fail,
             SUM(CASE WHEN content_type = 1 THEN 1 ELSE 0 END) as posterCount,
-            SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount
+            SUM(CASE WHEN content_type = 2 THEN 1 ELSE 0 END) as videoCount,
+            SUM(CASE WHEN content_type = 3 THEN 1 ELSE 0 END) as imageCount
         FROM t_push_record
         WHERE push_time >= #{start} AND push_time <= #{end}
         GROUP BY DATE(push_time)

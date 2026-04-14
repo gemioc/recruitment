@@ -112,6 +112,11 @@ public class StatisticsServiceImpl implements StatisticsService {
         videoMap.put("count", summary.get("videoCount") != null ? ((Number) summary.get("videoCount")).longValue() : 0L);
         typeDistribution.add(videoMap);
 
+        Map<String, Object> imageMap = new HashMap<>();
+        imageMap.put("type", "image");
+        imageMap.put("count", summary.get("imageCount") != null ? ((Number) summary.get("imageCount")).longValue() : 0L);
+        typeDistribution.add(imageMap);
+
         result.put("typeDistribution", typeDistribution);
 
         // 时段分布 - 使用聚合SQL
