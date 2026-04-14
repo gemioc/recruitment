@@ -2,6 +2,7 @@ package com.tv.recruitment.service;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.tv.recruitment.dto.response.PosterResponse;
 import com.tv.recruitment.entity.Poster;
 import com.tv.recruitment.entity.PosterTemplate;
@@ -73,7 +74,7 @@ public interface PosterService extends IService<Poster> {
      * @param templateId 模板ID
      * @return 生成的海报列表
      */
-    List<Poster> batchGenerate(List<Long> jobIds, Long templateId);
+    List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent) throws JsonProcessingException;
 
     /**
      * 格式化薪资

@@ -40,6 +40,12 @@ public class JobController {
         return Result.success(jobService.page(pageNum, pageSize, jobName, workAddress, status));
     }
 
+    @Operation(summary = "获取职位统计数据")
+    @GetMapping("/stats")
+    public Result<Map<String, Object>> getStats() {
+        return Result.success(jobService.getStats());
+    }
+
     @Operation(summary = "获取职位详情")
     @GetMapping("/{id}")
     public Result<Job> getById(@PathVariable Long id) {
@@ -84,6 +90,14 @@ public class JobController {
     @Log(type = "UPDATE", desc = "批量更改职位状态")
     public Result<Void> batchUpdateStatus(@RequestBody List<Long> ids, @RequestParam Integer status) {
         jobService.batchUpdateStatus(ids, status);
+        return Result.success();
+    }
+
+    @Operation(summary = "批量删除职位")
+    @DeleteMapping("/batch")
+    @Log(type = "DELETE", desc = "批量删除职位")
+    public Result<Void> batchDelete(@RequestBody List<Long> ids) {
+        jobService.batchDelete(ids);
         return Result.success();
     }
 

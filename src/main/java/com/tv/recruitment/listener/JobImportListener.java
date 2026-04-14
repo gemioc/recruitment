@@ -60,12 +60,6 @@ public class JobImportListener implements ReadListener<Job> {
         if (data.getCompany() == null || data.getCompany().trim().isEmpty()) {
             return "第" + rowNum + "行：公司名称不能为空";
         }
-        if (data.getSalaryMin() == null) {
-            return "第" + rowNum + "行：薪资下限不能为空";
-        }
-        if (data.getSalaryMax() == null) {
-            return "第" + rowNum + "行：薪资上限不能为空";
-        }
         if (data.getWorkAddress() == null || data.getWorkAddress().trim().isEmpty()) {
             return "第" + rowNum + "行：工作地点不能为空";
         }
@@ -74,6 +68,14 @@ public class JobImportListener implements ReadListener<Job> {
         }
         if (data.getContactPhone() == null || data.getContactPhone().trim().isEmpty()) {
             return "第" + rowNum + "行：联系电话不能为空";
+        }
+        // 薪资校验：都为0视为面议通过；只有一个值也通过；两者都不为0时上限必须大于下限
+        Integer salaryMin = data.getSalaryMin();
+        Integer salaryMax = data.getSalaryMax();
+        if (salaryMin != null && salaryMax != null && salaryMin != 0 && salaryMax != 0) {
+            if (salaryMax <= salaryMin) {
+                return "第" + rowNum + "行：薪资上限必须大于下限";
+            }
         }
         return null;
     }

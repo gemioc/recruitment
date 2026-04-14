@@ -3,6 +3,9 @@ package com.tv.recruitment.service.impl;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.tv.recruitment.common.utils.FileDownloadUtils;
 import com.tv.recruitment.common.utils.FormatUtils;
 import com.tv.recruitment.dto.response.PosterResponse;
@@ -44,6 +47,7 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
     private final JobMapper jobMapper;
     private final FileStorageService fileStorageService;
     private final PosterGenerateService posterGenerateService;
+    private final ObjectMapper objectMapper;
 
     @Override
     public List<PosterTemplate> getTemplates() {
@@ -127,8 +131,34 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
     }
 
     @Override
-    public List<Poster> batchGenerate(List<Long> jobIds, Long templateId) {
+    public List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent) throws JsonProcessingException {
         List<Poster> posters = new ArrayList<>();
+
+        // 如果提供了svgContent（多岗位海报），只生成一张
+        if (svgContent != null && !svgContent.isEmpty()) {
+            Poster poster = new Poster();
+            // jobIds.get(0) 可能是 Integer 类型，需要转换为 Long
+            if (jobIds != null && !jobIds.isEmpty()) {
+                Object firstId = jobIds.get(0);
+                if (firstId instanceof Long) {
+                    poster.setJobId((Long) firstId);
+                }
+                // 保存所有岗位ID为JSON格式
+                poster.setJobIds(objectMapper.writeValueAsString(jobIds));
+            }
+            poster.setTemplateId(templateId);
+            poster.setPosterName("多岗位招聘海报");
+            poster.setSvgContent(svgContent);
+
+            String filePath = posterGenerateService.generateFromSvg(svgContent);
+            poster.setFilePath(filePath);
+
+            posterMapper.insert(poster);
+            posters.add(poster);
+            return posters;
+        }
+
+        // 原有逻辑：逐个生成单岗位海报
         for (Long jobId : jobIds) {
             Poster poster = new Poster();
             poster.setJobId(jobId);
@@ -230,7 +260,26 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
         response.setFileSize(poster.getFileSize());
         response.setCreateTime(poster.getCreateTime());
 
-        if (poster.getJobId() != null) {
+        // 处理多岗位海报
+        if (poster.getJobIds() != null && !poster.getJobIds().isEmpty()) {
+            response.setJobIds(poster.getJobIds());
+            // 多岗位海报直接设置模板名称
+            response.setTemplateName("多岗招聘");
+            try {
+                List<Long> jobIdList = objectMapper.readValue(poster.getJobIds(), new TypeReference<List<Long>>() {});
+                List<String> jobNames = new ArrayList<>();
+                for (Long jobId : jobIdList) {
+                    Job job = jobMapper.selectById(jobId);
+                    if (job != null) {
+                        jobNames.add(job.getJobName());
+                    }
+                }
+                response.setRelatedJobNames(String.join("、", jobNames));
+                response.setJobName(String.join("、", jobNames));
+            } catch (JsonProcessingException e) {
+                log.error("解析jobIds失败", e);
+            }
+        } else if (poster.getJobId() != null) {
             Job job = jobMapper.selectById(poster.getJobId());
             if (job != null) {
                 response.setJobName(job.getJobName());

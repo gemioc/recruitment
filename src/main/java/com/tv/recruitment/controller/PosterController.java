@@ -1,6 +1,7 @@
 package com.tv.recruitment.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.tv.recruitment.common.annotation.Log;
 import com.tv.recruitment.common.result.Result;
 import com.tv.recruitment.dto.response.PosterResponse;
@@ -73,10 +74,20 @@ public class PosterController {
     @Operation(summary = "批量生成海报")
     @PostMapping("/batch")
     @Log(type = "CREATE", desc = "批量生成海报")
-    public Result<List<Poster>> batchGenerate(@RequestBody Map<String, Object> data) {
+    public Result<List<Poster>> batchGenerate(@RequestBody Map<String, Object> data) throws JsonProcessingException {
         List<Long> jobIds = (List<Long>) data.get("jobIds");
-        Long templateId = data.get("templateId") != null ? Long.valueOf(data.get("templateId").toString()) : null;
-        return Result.success(posterService.batchGenerate(jobIds, templateId));
+        String svgContent = (String) data.get("svgContent");
+        // 解析 templateId（可能是 Long 或 String "multi_01"）
+        Long templateId = null;
+        Object tid = data.get("templateId");
+        if (tid != null) {
+            try {
+                templateId = Long.valueOf(tid.toString());
+            } catch (NumberFormatException e) {
+                // 如果是字符串（如 "multi_01"），不转换为 Long，但仍然存储用于显示
+            }
+        }
+        return Result.success(posterService.batchGenerate(jobIds, templateId, svgContent));
     }
 
     @Operation(summary = "导出海报")

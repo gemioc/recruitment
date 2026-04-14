@@ -46,6 +46,13 @@ public interface JobService extends IService<Job> {
     void batchUpdateStatus(List<Long> ids, Integer status);
 
     /**
+     * 批量删除职位
+     *
+     * @param ids 职位ID列表
+     */
+    void batchDelete(List<Long> ids);
+
+    /**
      * 下载职位导入模板
      *
      * @param response 响应对象
@@ -61,4 +68,11 @@ public interface JobService extends IService<Job> {
      * @throws IOException IO异常
      */
     Map<String, Object> importJobs(MultipartFile file) throws IOException;
+
+    /**
+     * 获取职位统计数据
+     *
+     * @return 统计数据 {total, recruitingCount, expiredCount, todayCount}
+     */
+    Map<String, Object> getStats();
 }

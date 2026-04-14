@@ -3,6 +3,7 @@ package com.tv.recruitment.dto.response;
 import lombok.Data;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 海报列表响应
@@ -16,7 +17,11 @@ public class PosterResponse {
 
     private Long jobId;
 
+    private String jobIds;
+
     private String jobName;
+
+    private String relatedJobNames;
 
     private Long templateId;
 

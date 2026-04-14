@@ -27,6 +27,11 @@ public class Poster extends BaseEntity {
     private Long jobId;
 
     /**
+     * 多岗位海报关联的职位ID列表（JSON格式）
+     */
+    private String jobIds;
+
+    /**
      * 使用的模板ID
      */
     private Long templateId;

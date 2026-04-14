@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -66,6 +67,14 @@ public class JobServiceImpl extends ServiceImpl<JobMapper, Job> implements JobSe
             return;
         }
         ids.forEach(id -> updateStatus(id, status));
+    }
+
+    @Override
+    public void batchDelete(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return;
+        }
+        removeByIds(ids);
     }
 
     @Override
@@ -139,5 +148,28 @@ public class JobServiceImpl extends ServiceImpl<JobMapper, Job> implements JobSe
         result.put("errors", errors);
 
         return result;
+    }
+
+    @Override
+    public Map<String, Object> getStats() {
+        long total = baseMapper.selectCount(null);
+
+        LambdaQueryWrapper<Job> recruitingWrapper = new LambdaQueryWrapper<>();
+        recruitingWrapper.eq(Job::getStatus, 1);
+        long recruitingCount = baseMapper.selectCount(recruitingWrapper);
+
+        long expiredCount = total - recruitingCount;
+
+        LambdaQueryWrapper<Job> todayWrapper = new LambdaQueryWrapper<>();
+        todayWrapper.ge(Job::getCreateTime, LocalDate.now().atStartOfDay());
+        todayWrapper.lt(Job::getCreateTime, LocalDate.now().plusDays(1).atStartOfDay());
+        long todayCount = baseMapper.selectCount(todayWrapper);
+
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("total", total);
+        stats.put("recruitingCount", recruitingCount);
+        stats.put("expiredCount", expiredCount);
+        stats.put("todayCount", todayCount);
+        return stats;
     }
 }
