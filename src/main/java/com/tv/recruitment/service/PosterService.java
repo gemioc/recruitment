@@ -72,9 +72,11 @@ public interface PosterService extends IService<Poster> {
      *
      * @param jobIds     职位ID列表
      * @param templateId 模板ID
+     * @param svgContent SVG内容
+     * @param posterName 海报名称
      * @return 生成的海报列表
      */
-    List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent) throws JsonProcessingException;
+    List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent, String posterName) throws JsonProcessingException;
 
     /**
      * 格式化薪资

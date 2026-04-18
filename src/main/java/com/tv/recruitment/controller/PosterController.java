@@ -77,6 +77,7 @@ public class PosterController {
     public Result<List<Poster>> batchGenerate(@RequestBody Map<String, Object> data) throws JsonProcessingException {
         List<Long> jobIds = (List<Long>) data.get("jobIds");
         String svgContent = (String) data.get("svgContent");
+        String posterName = (String) data.get("posterName");
         // 解析 templateId（可能是 Long 或 String "multi_01"）
         Long templateId = null;
         Object tid = data.get("templateId");
@@ -87,7 +88,7 @@ public class PosterController {
                 // 如果是字符串（如 "multi_01"），不转换为 Long，但仍然存储用于显示
             }
         }
-        return Result.success(posterService.batchGenerate(jobIds, templateId, svgContent));
+        return Result.success(posterService.batchGenerate(jobIds, templateId, svgContent, posterName));
     }
 
     @Operation(summary = "导出海报")

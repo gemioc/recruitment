@@ -131,7 +131,7 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
     }
 
     @Override
-    public List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent) throws JsonProcessingException {
+    public List<Poster> batchGenerate(List<Long> jobIds, Long templateId, String svgContent, String posterName) throws JsonProcessingException {
         List<Poster> posters = new ArrayList<>();
 
         // 如果提供了svgContent（多岗位海报），只生成一张
@@ -149,7 +149,7 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
                 poster.setJobIds(objectMapper.writeValueAsString(jobIds));
             }
             poster.setTemplateId(templateId);
-            poster.setPosterName("多岗位招聘海报");
+            poster.setPosterName(posterName != null && !posterName.isEmpty() ? posterName : "多岗位招聘海报");
             poster.setSvgContent(svgContent);
 
             String filePath = posterGenerateService.generateFromSvg(svgContent);

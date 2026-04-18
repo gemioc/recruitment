@@ -28,4 +28,4 @@ file:
 
 logging:
   level:
-    com.tv.recruitment: debug
+    com.tv.recruitment: info
