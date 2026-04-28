@@ -19,44 +19,92 @@ import java.time.LocalDate;
 @TableName("t_job")
 public class Job extends BaseEntity {
 
-    @ExcelProperty("职位名称*")
-    private String jobName;
-
-    @ExcelProperty("公司名称*")
+    /**
+     * 公司名称
+     */
+    @ExcelProperty("单位名称*")
     private String company;
 
-    @ExcelProperty("薪资下限*")
-    private Integer salaryMin;
+    /**
+     * 职位名称
+     */
+    @ExcelProperty("工种名称*")
+    private String jobName;
 
-    @ExcelProperty("薪资上限*")
-    private Integer salaryMax;
+    /**
+     * 工种类别
+     */
+    @ExcelProperty("工种类别*")
+    private String jobType;
 
-    @ExcelProperty("工作地点*")
-    private String workAddress;
-
-    @ExcelProperty("学历要求")
-    private String education;
-
-    @ExcelProperty("工作经验")
-    private String experience;
-
+    /**
+     * 招聘人数
+     */
     @ExcelProperty("招聘人数")
     private Integer recruitCount;
 
+    /**
+     * 薪资下限
+     */
+    @ExcelProperty("月薪下限*")
+    private Integer salaryMin;
+
+    /**
+     * 薪资上限
+     */
+    @ExcelProperty("月薪上限*")
+    private Integer salaryMax;
+
+    /**
+     * 福利待遇
+     */
+    @ExcelProperty("福利待遇")
+    private String welfare;
+
+    /**
+     * 职位信息
+     */
+    @ExcelProperty("职位简介")
+    private String jobInfo;
+
+    /**
+     * 工作性质
+     */
+    @ExcelProperty("工作性质")
+    private String workNature;
+
+    /**
+     * 学历要求
+     */
+    @ExcelProperty("学历要求")
+    private String education;
+
+    /**
+     * 学历要求
+     */
+    @ExcelProperty("经验要求")
+    private String experience;
+
+    /**
+     * 联系人
+     */
     @ExcelProperty("联系人")
     private String contactName;
 
-    @ExcelProperty("联系电话*")
+    /**
+     * 联系电话
+     */
+    @ExcelProperty("联系手机*")
     private String contactPhone;
 
-    @ExcelProperty("联系邮箱")
+    /**
+     * 联系邮箱
+     */
+    @ExcelProperty("电子邮箱")
     private String contactEmail;
 
-    @ExcelProperty("职位信息")
-    private String jobInfo;
-
-    @ExcelProperty("福利待遇")
-    private String welfare;
+    @ExcelIgnore
+    private String workAddress;
 
     @ExcelIgnore
     private String contactWechat;
