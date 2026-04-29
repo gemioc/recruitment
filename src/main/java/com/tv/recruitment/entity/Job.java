@@ -18,12 +18,23 @@ import java.time.LocalDate;
 @EqualsAndHashCode(callSuper = true)
 @TableName("t_job")
 public class Job extends BaseEntity {
+    /**
+     * 展位号码
+     */
+    @ExcelProperty("展位号码")
+    private String number;
 
     /**
      * 公司名称
      */
     @ExcelProperty("单位名称*")
     private String company;
+
+    /**
+     * 工作地
+     */
+    @ExcelProperty("职位行政区划")
+    private String workAddress;
 
     /**
      * 职位名称
@@ -102,9 +113,6 @@ public class Job extends BaseEntity {
      */
     @ExcelProperty("电子邮箱")
     private String contactEmail;
-
-    @ExcelIgnore
-    private String workAddress;
 
     @ExcelIgnore
     private String contactWechat;
