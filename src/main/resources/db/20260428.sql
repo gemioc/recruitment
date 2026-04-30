@@ -12,5 +12,7 @@
 ALTER TABLE `t_job` ADD COLUMN `job_type` varchar(100) comment '工种类别';
 -- 工作性质
 ALTER TABLE `t_job` ADD COLUMN `work_nature` varchar(100) comment '工作性质';
+-- 展位编号
+ALTER TABLE `t_job` ADD COLUMN `number` varchar(100) comment '展位编号';
 -- 工作地可以为空
 ALTER TABLE `t_job` MODIFY `work_address` varchar(200) NULL;

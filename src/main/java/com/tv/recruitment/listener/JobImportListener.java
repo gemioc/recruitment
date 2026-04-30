@@ -70,7 +70,7 @@ public class JobImportListener implements ReadListener<Job> {
         Integer salaryMin = data.getSalaryMin();
         Integer salaryMax = data.getSalaryMax();
         if (salaryMin != null && salaryMax != null && salaryMin != 0 && salaryMax != 0) {
-            if (salaryMax <= salaryMin) {
+            if (salaryMax < salaryMin) {
                 return "第" + rowNum + "行：薪资上限必须大于下限";
             }
         }

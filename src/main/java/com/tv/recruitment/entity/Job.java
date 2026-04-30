@@ -27,25 +27,19 @@ public class Job extends BaseEntity {
     /**
      * 公司名称
      */
-    @ExcelProperty("单位名称*")
+    @ExcelProperty("单位名称")
     private String company;
-
-    /**
-     * 工作地
-     */
-    @ExcelProperty("职位行政区划")
-    private String workAddress;
 
     /**
      * 职位名称
      */
-    @ExcelProperty("工种名称*")
+    @ExcelProperty("工种名称")
     private String jobName;
 
     /**
      * 工种类别
      */
-    @ExcelProperty("工种类别*")
+    @ExcelProperty("工种类别")
     private String jobType;
 
     /**
@@ -57,13 +51,13 @@ public class Job extends BaseEntity {
     /**
      * 薪资下限
      */
-    @ExcelProperty("月薪下限*")
+    @ExcelProperty("月薪下限")
     private Integer salaryMin;
 
     /**
      * 薪资上限
      */
-    @ExcelProperty("月薪上限*")
+    @ExcelProperty("月薪上限")
     private Integer salaryMax;
 
     /**
@@ -105,13 +99,19 @@ public class Job extends BaseEntity {
     /**
      * 联系电话
      */
-    @ExcelProperty("联系手机*")
+    @ExcelProperty("联系手机")
     private String contactPhone;
+
+    /**
+     * 工作地
+     */
+    @ExcelProperty("职位行政区划")
+    private String workAddress;
 
     /**
      * 联系邮箱
      */
-    @ExcelProperty("电子邮箱")
+    @ExcelIgnore
     private String contactEmail;
 
     @ExcelIgnore
