@@ -66,8 +66,17 @@ public class FileController {
     public ResponseEntity<Resource> getTemplate(HttpServletRequest request) {
         String filePath = extractFilePath(request, "/files/templates/");
         Resource resource = fileStorageService.loadFile("templates/" + filePath);
+        // 根据文件扩展名动态设置 Content-Type
+        String contentType = "application/octet-stream";
+        if (filePath.toLowerCase().endsWith(".svg")) {
+            contentType = "image/svg+xml";
+        } else if (filePath.toLowerCase().endsWith(".jpg") || filePath.toLowerCase().endsWith(".jpeg")) {
+            contentType = MediaType.IMAGE_JPEG_VALUE;
+        } else if (filePath.toLowerCase().endsWith(".png")) {
+            contentType = MediaType.IMAGE_PNG_VALUE;
+        }
         return ResponseEntity.ok()
-                .contentType(MediaType.valueOf("image/svg+xml"))
+                .contentType(MediaType.parseMediaType(contentType))
                 .body(resource);
     }
 

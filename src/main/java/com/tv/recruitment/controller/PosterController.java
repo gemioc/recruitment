@@ -122,4 +122,33 @@ public class PosterController {
         posterService.delete(id);
         return Result.success();
     }
+
+    @Operation(summary = "上传PNG海报（前端html2canvas渲染后上传）")
+    @PostMapping("/upload-png")
+    @Log(type = "CREATE", desc = "上传PNG海报")
+    public Result<Poster> uploadPng(@RequestBody Map<String, Object> data) {
+        String pngBase64 = (String) data.get("pngBase64");
+        String posterName = (String) data.get("posterName");
+        Long templateId = null;
+        Object tid = data.get("templateId");
+        if (tid != null) {
+            try {
+                templateId = Long.valueOf(tid.toString());
+            } catch (NumberFormatException ignored) {}
+        }
+        List<Long> jobIds = null;
+        Object jids = data.get("jobIds");
+        if (jids instanceof List) {
+            jobIds = ((List<?>) jids).stream()
+                .map(o -> {
+                    if (o instanceof Long) return (Long) o;
+                    if (o instanceof Integer) return ((Integer) o).longValue();
+                    if (o instanceof String) return Long.valueOf((String) o);
+                    return null;
+                })
+                .filter(java.util.Objects::nonNull)
+                .toList();
+        }
+        return Result.success(posterService.uploadPng(pngBase64, posterName, templateId, jobIds));
+    }
 }

@@ -20,9 +20,10 @@ public class PosterTemplate extends BaseEntity {
     private String templateName;
 
     /**
-     * 模板文件路径
+     * 模板标识（对应前端 posterTemplateEngine.js 中的模板注册ID）
      */
-    private String templatePath;
+    @TableField("template_id")
+    private String templateId;
 
     /**
      * 配色方案

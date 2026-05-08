@@ -20,6 +20,7 @@ import com.tv.recruitment.service.PosterGenerateService;
 import com.tv.recruitment.service.PosterService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StreamUtils;
@@ -48,6 +49,9 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
     private final FileStorageService fileStorageService;
     private final PosterGenerateService posterGenerateService;
     private final ObjectMapper objectMapper;
+
+    @Value("${file.storage.base-path:D:/B-code_space/tv-files}")
+    private String basePath;
 
     @Override
     public List<PosterTemplate> getTemplates() {
@@ -84,33 +88,21 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
 
     @Override
     public Poster generate(Poster poster) {
-        String filePath = posterGenerateService.generateFromJob(poster);
-        poster.setFilePath(filePath);
+        // 前端已改用 generateAlias + svgContent 方式，此方法仅作兼容保留
+        if (poster.getSvgContent() != null && !poster.getSvgContent().isEmpty()) {
+            String filePath = posterGenerateService.generateFromSvg(poster.getSvgContent());
+            poster.setFilePath(filePath);
+        }
         posterMapper.insert(poster);
         return poster;
     }
 
     @Override
+    @Deprecated
     public String preview(Map<String, Object> data) {
-        Long jobId = Long.valueOf(data.get("jobId").toString());
-        Long templateId = data.get("templateId") != null ? Long.valueOf(data.get("templateId").toString()) : null;
-
-        Job job = jobMapper.selectById(jobId);
-        if (job == null) {
-            return "/files/posters/preview.png";
-        }
-
-        Map<String, String> posterData = new HashMap<>();
-        posterData.put("jobTitle", job.getJobName() != null ? job.getJobName() : "职位名称");
-        posterData.put("company", job.getCompany() != null ? job.getCompany() : "公司名称");
-        posterData.put("salary", formatSalary(job.getSalaryMin(), job.getSalaryMax()));
-        posterData.put("location", job.getWorkAddress() != null ? job.getWorkAddress() : "不限");
-        posterData.put("education", job.getEducation() != null ? job.getEducation() : "不限");
-        posterData.put("experience", job.getExperience() != null ? job.getExperience() : "不限");
-        posterData.put("contactName", job.getContactName() != null ? job.getContactName() : "");
-        posterData.put("contactPhone", job.getContactPhone() != null ? job.getContactPhone() : "");
-
-        return posterGenerateService.generatePoster(templateId, posterData);
+        // 前端已改用纯前端SVG渲染，不再调用此方法
+        // 此方法仅作兼容保留
+        return "/files/posters/preview.png";
     }
 
     @Override
@@ -249,6 +241,47 @@ public class PosterServiceImpl extends ServiceImpl<PosterMapper, Poster> impleme
     @Override
     public void delete(Long id) {
         posterMapper.deleteById(id);
+    }
+
+    @Override
+    public Poster uploadPng(String pngBase64, String posterName, Long templateId, List<Long> jobIds) {
+        Poster poster = new Poster();
+        poster.setTemplateId(templateId);
+        poster.setPosterName(posterName != null && !posterName.isEmpty() ? posterName : "海报");
+        if (jobIds != null && !jobIds.isEmpty()) {
+            try {
+                poster.setJobIds(objectMapper.writeValueAsString(jobIds));
+                Object firstId = jobIds.get(0);
+                if (firstId instanceof Long) {
+                    poster.setJobId((Long) firstId);
+                } else if (firstId instanceof Integer) {
+                    poster.setJobId(((Integer) firstId).longValue());
+                }
+            } catch (JsonProcessingException e) {
+                log.error("序列化jobIds失败", e);
+            }
+        }
+
+        // 保存PNG文件
+        String fileName = "poster_" + System.currentTimeMillis() + ".png";
+        String filePath = "/posters/" + fileName;
+
+        try {
+            // 解码Base64并保存
+            byte[] pngBytes = java.util.Base64.getDecoder().decode(pngBase64);
+            java.nio.file.Path path = java.nio.file.Paths.get(basePath, filePath);
+            java.nio.file.Files.createDirectories(path.getParent());
+            java.nio.file.Files.write(path, pngBytes);
+
+            poster.setFilePath(filePath);
+            posterMapper.insert(poster);
+
+            log.info("PNG海报上传成功: {} ({} bytes)", filePath, pngBytes.length);
+            return poster;
+        } catch (Exception e) {
+            log.error("保存PNG海报失败", e);
+            throw new RuntimeException("保存PNG海报失败: " + e.getMessage());
+        }
     }
 
     @Override

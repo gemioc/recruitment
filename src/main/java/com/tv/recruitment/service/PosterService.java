@@ -121,6 +121,17 @@ public interface PosterService extends IService<Poster> {
     void delete(Long id);
 
     /**
+     * 上传PNG海报（前端html2canvas渲染后上传）
+     *
+     * @param pngBase64 PNG图片Base64编码（不带data:image/png;base64,前缀）
+     * @param posterName 海报名称
+     * @param templateId 模板ID
+     * @param jobIds 关联的职位ID列表
+     * @return 保存的海报对象
+     */
+    Poster uploadPng(String pngBase64, String posterName, Long templateId, List<Long> jobIds);
+
+    /**
      * 转换为响应对象
      *
      * @param poster 海报实体
